@@ -11,7 +11,7 @@ BOT_NAME = "Ria"
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return f"{BOT_NAME} IS ALIVE"
+    return f"{BOT_NAME} IS ALIVE - 24/7 ONLINE!"
 
 def run_flask():
     app.run(host='0.0.0.0', port=8080)
@@ -185,4 +185,8 @@ async def help_cmd(ctx):
     await ctx.send(embed=e)
 
 token = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
-bot.run(token)
+if not token:
+    print("ERROR: No TOKEN or BOT_TOKEN found!")
+else:
+    bot.run(token)
+    
