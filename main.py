@@ -6,7 +6,6 @@ from flask import Flask
 import threading
 import traceback
 
-# --- KEEP RENDER ALIVE ---
 app = Flask(__name__)
 @app.route('/')
 def home():
@@ -15,7 +14,7 @@ def home():
 def run_flask():
     app.run(host='0.0.0.0', port=8080)
 
-threading.Thread(target=run_flask).start()
+threading.Thread(target=run_flask, daemon=True).start()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -61,7 +60,7 @@ async def on_command_error(ctx, error):
         except:
             pass
         return
-    print(f"ERROR in {ctx.command}: {error}")
+    print(f"ERROR: {error}")
     traceback.print_exception(type(error), error, error.__traceback__)
 
 @bot.command()
@@ -140,17 +139,10 @@ async def help_cmd(ctx):
         e.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
         e.set_author(name="BLOODMOON")
-    e.add_field(name="General", value="!hello
-!embed [text]
-!bloodmoon
-!avatar [@user]", inline=False)
-    e.add_field(name="Anonymous", value="!say [text]
-!say @member text", inline=False)
-    e.add_field(name="Moderation", value="!clear [number]
-!announce [text]
-!help", inline=False)
+    e.add_field(name="General", value="!hello\n!embed [text]\n!bloodmoon\n!avatar [@user]", inline=False)
+    e.add_field(name="Anonymous", value="!say [text]\n!say @member text", inline=False)
+    e.add_field(name="Moderation", value="!clear [number]\n!announce [text]\n!help", inline=False)
     e.set_footer(text="BLOODMOON - Message commands anonymously")
     await ctx.send(embed=e)
 
 bot.run(os.getenv("TOKEN"))
-    
