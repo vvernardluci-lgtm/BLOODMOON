@@ -34,6 +34,7 @@ def blood_embed(description=None, title=None):
 @bot.event
 async def on_ready():
     print(f"BLOODMOON ONLINE: {bot.user}")
+    await bot.change_presence(activity=discord.Game(name="BLOODMOON | !help"))
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -99,7 +100,7 @@ async def say(ctx, *, message=None):
     except:
         pass
     e = blood_embed(description=message)
-    await ctx.send(embed=e, allowed_mentions=discord.AllowedMentions(everyone=False, users=True, roles=False))
+    await ctx.send(embed=e)
 
 @bot.command()
 @commands.has_permissions(manage_messages=True)
@@ -124,15 +125,13 @@ async def announce(ctx, *, text=None):
         await ctx.message.delete()
     except:
         pass
-    e = discord.Embed(title="ANNOUNCEMENT", description=text, color=0xff0000)
+    e = discord.Embed(title="ANNOUNCEMENT", description=text, color=0xFF0000)
     try:
         e.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
         e.set_author(name="BLOODMOON")
     e.set_footer(text="BLOODMOON - Official Announcement")
-    await ctx.send(content="@everyone", embed=e, allowed_mentions=discord.AllowedMentions(everyone=True))
-
-
+    await ctx.send(embed=e)
 
 @bot.command(name="help")
 async def help_cmd(ctx):
@@ -142,11 +141,11 @@ async def help_cmd(ctx):
     except:
         e.set_author(name="BLOODMOON")
     e.add_field(name="General Commands", value="`!hello` - Say hello\n`!embed [text]` - Make text into embed\n`!bloodmoon` - Show BLOODMOON image\n`!avatar [@user]` - Show avatar\n`!say [text]` - Say anonymously", inline=False)
-    e.add_field(name="Moderation Commands", value="`!clear [number]` - Delete 1-100 messages\n`!announce [text]` - Announce with @everyone", inline=False)
+    e.add_field(name="Moderation Commands", value="`!clear [number]` - Delete 1-100 messages\n`!announce [text]` - Make announcement", inline=False)
     e.add_field(name="Info", value="`!help` - Show this list\nCooldown: clear 3s | announce 60s", inline=False)
     e.set_footer(text="BLOODMOON - Anonymous - 7 Commands")
     await ctx.send(embed=e)
 
-
-bot.run(os.getenv("TOKEN"))
+token = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
+bot.run(token)
     
