@@ -1,89 +1,141 @@
-
-import discord
-from discord.ext import commands
+import 【entity-discord¦canonical_name=discord】
+from 【entity-discord¦canonical_name=discord】.ext import commands
 import os
 from flask import Flask
-from threading import Thread
+import threading
+import traceback
 
-# --- 24/7 WEB SERVER FOR RENDER ---
-app = Flask('')
+# --- KEEP RENDER ALIVE (Prevents crashes) ---
+app = Flask(__name__)
 @app.route('/')
 def home():
-    return "BLOODMOON is alive 24/7! 🌙"
-
-def run():
+    return "BLOODMOON IS ALIVE 🩸🌙"
+def run_flask():
     app.run(host='0.0.0.0', port=8080)
+threading.Thread(target=run_flask).start()
 
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
-# --- BOT ---
-intents = discord.Intents.default()
+intents = 【entity-discord¦canonical_name=discord】.Intents.default()
 intents.message_content = True
 intents.members = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+
+bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
+
+def blood_embed(description=None, title=None):
+    embed = 【entity-discord¦canonical_name=discord】.Embed(description=description, title=title, color=0x2b2d31)
+    embed.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user and bot.user.display_avatar else None)
+    return embed
 
 @bot.event
 async def on_ready():
-    print(f"🌙 BLOODMOON ONLINE as {bot.user}!")
-    await bot.change_presence(activity=discord.Game(name="🌙 BLOODMOON | !help"))
+    print(f"✅ BLOODMOON ONLINE: {bot.user}")
 
+# --- GLOBAL ERROR HANDLER (Fixes ALL crashes) ---
+@bot.event
+async def on_command_error(ctx, error):
+    # Ignore command not found
+    if isinstance(error, commands.CommandNotFound):
+        return
+    
+    # Cooldown message (EMBED)
+    if isinstance(error, commands.CommandOnCooldown):
+        e = blood_embed(description=f"⏳ **Cooldown!** Try again in `{int(error.retry_after)}` seconds.")
+        return await ctx.send(embed=e, delete_after=5)
+    
+    # Missing permissions (EMBED)
+    if isinstance(error, commands.MissingPermissions):
+        e = blood_embed(description=f"❌ You don't have permission to use `{ctx.command}`!\nRequired: `{' , '.join(error.missing_permissions)}`")
+        return await ctx.send(embed=e, delete_after=7)
+    
+    # Bot missing permissions
+    if isinstance(error, commands.BotMissingPermissions):
+        e = blood_embed(description=f"❌ I don't have permission! I need `{' , '.join(error.missing_permissions)}`")
+        return await ctx.send(embed=e, delete_after=7)
+    
+    # Other errors - log but don't crash
+    print(f"ERROR in {ctx.command}: {error}")
+    traceback.print_exception(type(error), error, error.__traceback__)
+    e = blood_embed(description=f"⚠️ An error happened! Don't worry, bot didn't crash.\n`{error}`")
+    try:
+        await ctx.send(embed=e, delete_after=10)
+    except:
+        pass
+
+# --- COMMANDS (ALL EMBEDS, ANONYMOUS) ---
 @bot.command()
 async def hello(ctx):
-    embed = discord.Embed(title="Hello! 🌙", description=f"Hey {ctx.author.mention}!", color=0xFF0000)
-    await ctx.send(embed=embed)
+    await ctx.send(embed=blood_embed(description="Hello! 🌙 Welcome to BLOODMOON."))
 
 @bot.command()
-async def embed(ctx, *, text="BLOODMOON 🌙"):
-    try: await ctx.message.delete()
-    except: pass
-    embed = discord.Embed(title="🌙 BLOODMOON", description=text, color=0xFF0000)
-    embed.set_footer(text=f"By {ctx.author}", icon_url=ctx.author.display_avatar.url)
-    await ctx.send(embed=embed)
+async def embed(ctx, *, text=None):
+    if not text:
+        return await ctx.send(embed=blood_embed(description="❌ Usage: `!embed [text]`"))
+    await ctx.send(embed=blood_embed(description=text))
 
 @bot.command()
-async def say(ctx, *, text):
-    try: await ctx.message.delete()
-    except: pass
-    embed = discord.Embed(description=text, color=0xFF0000)
-    embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
-    await ctx.send(embed=embed)
-
-@bot.command()
-async def announce(ctx, channel: discord.TextChannel = None, *, text):
-    try: await ctx.message.delete()
-    except: pass
-    target = channel or ctx.channel
-    embed = discord.Embed(title="📢 ANNOUNCEMENT", description=text, color=0xFF0000)
-    embed.set_footer(text="BLOODMOON 🌙")
-    await target.send(embed=embed)
-    await ctx.send(f"✅ Announced in {target.mention}", delete_after=5)
+async def bloodmoon(ctx):
+    e = blood_embed(title="🌙 BLOODMOON", description="We rise under the blood moon.")
+    e.set_image(url="https://i.imgur.com/8QmQ1rA.png")
+    await ctx.send(embed=e)
 
 @bot.command()
 async def avatar(ctx, member: discord.Member = None):
     member = member or ctx.author
-    embed = discord.Embed(title=f"{member}'s Avatar", color=0xFF0000)
-    embed.set_image(url=member.display_avatar.url)
-    await ctx.send(embed=embed)
+    e = discord.Embed(title=f"{member.display_name}'s Avatar", color=0x2b2d31)
+    e.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user else None)
+    e.set_image(url=member.display_avatar.url)
+    await ctx.send(embed=e)
 
 @bot.command()
-async def clear(ctx, amount: int = 5):
-    if ctx.author.guild_permissions.manage_messages:
-        await ctx.channel.purge(limit=amount+1)
-        await ctx.send(f"🧹 Cleared {amount}!", delete_after=3)
+async def say(ctx, *, message=None):
+    if not message:
+        return await ctx.send(embed=blood_embed(description="❌ Usage: `!say [text]`"))
+    try: await ctx.message.delete()
+    except: pass
+    e = blood_embed(description=message)
+    await ctx.send(embed=e, allowed_mentions=discord.AllowedMentions(everyone=False, users=True, roles=False))
 
 @bot.command()
-async def help_blood(ctx):
-    embed = discord.Embed(title="🌙 BLOODMOON COMMANDS", color=0xFF0000)
-    embed.add_field(name="!hello", value="Say hello", inline=False)
-    embed.add_field(name="!embed [text]", value="Embed + auto delete", inline=False)
-    embed.add_field(name="!say [text]", value="Say as embed + auto delete", inline=False)
-    embed.add_field(name="!announce #channel text", value="Announce anywhere + auto delete", inline=False)
-    embed.add_field(name="!avatar", value="Show avatar", inline=False)
-    embed.add_field(name="!clear", value="Clear messages", inline=False)
-    embed.set_footer(text="BLOODMOON 24/7 🌙")
-    await ctx.send(embed=embed)
+@commands.has_permissions(manage_messages=True)
+@commands.cooldown(1, 3, commands.BucketType.user) # 3s cooldown to prevent spam crash
+async def clear(ctx, number: int = 5):
+    if number < 1 or number > 100:
+        return await ctx.send(embed=blood_embed(description="❌ Clear 1-100 only!"), delete_after=5)
+    try:
+        deleted = await ctx.channel.purge(limit=number + 1)
+        e = blood_embed(description=f"✅ Cleared `{len(deleted)-1}` messages!")
+        await ctx.send(embed=e, delete_after=3)
+    except Exception as e:
+        await ctx.send(embed=blood_embed(description=f"❌ Failed to clear: `{e}`"), delete_after=5)
 
-keep_alive()
-bot.run(os.environ.get("BOT_TOKEN"))
+# --- FIXED ANNOUNCE WITH COOLDOWN EMBED ---
+@bot.command()
+@commands.has_permissions(manage_guild=True)
+@commands.cooldown(1, 60, commands.BucketType.guild) # 1 min cooldown per server
+async def announce(ctx, *, text=None):
+    if not text:
+        return await ctx.send(embed=blood_embed(description="❌ Usage: `!announce [text]`"))
+    try: await ctx.message.delete()
+    except: pass
+
+    e = discord.Embed(title="📢 ANNOUNCEMENT", description=text, color=0xff0000)
+    e.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user else None)
+    e.set_footer(text="BLOODMOON • Official Announcement")
+    await ctx.send(content="@everyone", embed=e, allowed_mentions=【entity-discord¦canonical_name=discord】.AllowedMentions(everyone=True))
+
+@bot.command(name="help")
+@bot.command(name="help_blood")
+async def help_command(ctx):
+    e = discord.Embed(title="🌙 BLOODMOON Command Guide", description="Use the `!` prefix. Command responses are sent in BLOODMOON embeds.", color=0x2b2d31)
+    e.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user else None)
+    e.add_field(name="General", value="`!hello`\n`!embed [text]`\n`!bloodmoon`\n`!avatar [@user]`", inline=False)
+    e.add_field(name="Anonymous", value="`!say [text]`\n`!say @member text`", inline=False)
+    e.add_field(name="Moderation", value="`!clear [number]` — 1-100 (3s cooldown)\n`!announce [text]` — @everyone (60s cooldown)\n`!help`", inline=False)
+    e.set_footer(text="BLOODMOON • Message commands anonymously")
+    await ctx.send(embed=e)
+
+# --- RUN WITH CRASH PROTECTION ---
+try:
+    bot.run(os.getenv("TOKEN"))
+except Exception as e:
+    print(f"CRITICAL ERROR: {e}")
+    traceback.print_exc()
