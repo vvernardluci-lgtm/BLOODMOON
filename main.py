@@ -1,4 +1,3 @@
-
 import discord
 from discord.ext import commands
 import os
@@ -6,10 +5,12 @@ from flask import Flask
 import threading
 import traceback
 
+BOT_NAME = "Ria"
+
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return "BLOODMOON IS ALIVE"
+    return f"{BOT_NAME} IS ALIVE"
 
 def run_flask():
     app.run(host='0.0.0.0', port=8080)
@@ -23,18 +24,18 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
 def blood_embed(description=None, title=None):
-    embed = discord.Embed(description=description, title=title, color=0x8B0000)
+    embed = discord.Embed(description=description, title=title, color=0xFF6B9D)
     try:
         icon = bot.user.display_avatar.url if bot.user and bot.user.display_avatar else None
-        embed.set_author(name="BLOODMOON", icon_url=icon)
+        embed.set_author(name=BOT_NAME, icon_url=icon)
     except:
-        embed.set_author(name="BLOODMOON")
+        embed.set_author(name=BOT_NAME)
     return embed
 
 @bot.event
 async def on_ready():
-    print(f"BLOODMOON ONLINE: {bot.user}")
-    await bot.change_presence(activity=discord.Game(name="BLOODMOON | !help"))
+    print(f"{BOT_NAME} ONLINE: {bot.user}")
+    await bot.change_presence(activity=discord.Game(name=f"{BOT_NAME} | !help"))
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -66,7 +67,7 @@ async def on_command_error(ctx, error):
 
 @bot.command()
 async def hello(ctx):
-    await ctx.send(embed=blood_embed(description="Hello! Welcome to BLOODMOON."))
+    await ctx.send(embed=blood_embed(description="Hello! 💖"))
 
 @bot.command()
 async def embed(ctx, *, text=None):
@@ -76,18 +77,17 @@ async def embed(ctx, *, text=None):
 
 @bot.command()
 async def bloodmoon(ctx):
-    e = blood_embed(title="BLOODMOON", description="We rise under the blood moon.")
-    e.set_image(url="https://i.imgur.com/8QmQ1rA.png")
+    e = blood_embed(description="Hi! 💖")
     await ctx.send(embed=e)
 
 @bot.command()
 async def avatar(ctx, member: discord.Member = None):
     member = member or ctx.author
-    e = discord.Embed(title=f"{member.display_name} Avatar", color=0x8B0000)
+    e = discord.Embed(title=f"{member.display_name} Avatar", color=0xFF6B9D)
     try:
-        e.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user else None)
+        e.set_author(name=BOT_NAME, icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
-        e.set_author(name="BLOODMOON")
+        e.set_author(name=BOT_NAME)
     e.set_image(url=member.display_avatar.url)
     await ctx.send(embed=e)
 
@@ -120,32 +120,43 @@ async def clear(ctx, number: int = 5):
 @commands.cooldown(1, 60, commands.BucketType.guild)
 async def announce(ctx, *, text=None):
     if not text:
-        return await ctx.send(embed=blood_embed(description="Usage: !announce [text]"))
+        return await ctx.send(embed=blood_embed(description="Usage: !announce [text] or !announce @everyone [text] to ping"))
     try:
         await ctx.message.delete()
     except:
         pass
-    e = discord.Embed(title="ANNOUNCEMENT", description=text, color=0xFF0000)
+
+    ping_everyone = False
+    clean_text = text
+    if "@everyone" in text or "@here" in text:
+        ping_everyone = True
+        clean_text = text.replace("@everyone", "").replace("@here", "").strip()
+        if not clean_text:
+            clean_text = "Announcement"
+
+    e = discord.Embed(title="ANNOUNCEMENT", description=clean_text, color=0xFF6B9D)
     try:
-        e.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user else None)
+        e.set_author(name=BOT_NAME, icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
-        e.set_author(name="BLOODMOON")
-    e.set_footer(text="BLOODMOON - Official Announcement")
-    await ctx.send(embed=e)
+        e.set_author(name=BOT_NAME)
+
+    if ping_everyone:
+        await ctx.send(content="@everyone", embed=e, allowed_mentions=discord.AllowedMentions(everyone=True))
+    else:
+        await ctx.send(embed=e)
+
 
 @bot.command(name="help")
 async def help_cmd(ctx):
-    e = discord.Embed(title="BLOODMOON - All Commands", description="Prefix: ! | All replies are anonymous BLOODMOON embeds", color=0x8B0000)
+    e = discord.Embed(title="All Commands", description="Prefix: !", color=0xFF6B9D)
     try:
-        e.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user else None)
+        e.set_author(name=BOT_NAME, icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
-        e.set_author(name="BLOODMOON")
-    e.add_field(name="General Commands", value="`!hello` - Say hello\n`!embed [text]` - Make text into embed\n`!bloodmoon` - Show BLOODMOON image\n`!avatar [@user]` - Show avatar\n`!say [text]` - Say anonymously", inline=False)
-    e.add_field(name="Moderation Commands", value="`!clear [number]` - Delete 1-100 messages\n`!announce [text]` - Make announcement", inline=False)
-    e.add_field(name="Info", value="`!help` - Show this list\nCooldown: clear 3s | announce 60s", inline=False)
-    e.set_footer(text="BLOODMOON - Anonymous - 7 Commands")
+        e.set_author(name=BOT_NAME)
+    e.add_field(name="General", value="`!hello`\n`!embed [text]`\n`!bloodmoon`\n`!avatar [@user]`\n`!say [text]`", inline=False)
+    e.add_field(name="Moderation", value="`!clear [number]`\n`!announce [text]`\n`!announce @everyone [text]`", inline=False)
+    e.add_field(name="Info", value="`!help`", inline=False)
     await ctx.send(embed=e)
 
 token = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
 bot.run(token)
-    
