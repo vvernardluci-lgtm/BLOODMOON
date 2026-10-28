@@ -78,7 +78,7 @@ async def embed(ctx, *, text=None):
 
 @bot.command()
 async def bloodmoon(ctx):
-    e = blood_embed(description="Hi! I'm Ria!")
+    e = blood_embed(description="Hi! I am Ria!")
     await ctx.send(embed=e)
 
 @bot.command()
@@ -148,15 +148,46 @@ async def announce(ctx, *, text=None):
 
 @bot.command(name="help")
 async def help_cmd(ctx):
-    e = discord.Embed(title="All Commands", description="Prefix: !", color=0x8B0000)
+    e = discord.Embed(
+        title="Ria • Command List",
+        description="**Prefix:** `!` • Here are all my commands:",
+        color=0x8B0000
+    )
     try:
         e.set_author(name=BOT_NAME, icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
         e.set_author(name=BOT_NAME)
-    e.add_field(name="General", value="`!hello` - Say hello\n`!embed [text]` - Make embed\n`!bloodmoon` - Show Ria\n`!avatar [@user]` - Show avatar\n`!say [text]` - Say anonymously", inline=False)
-    e.add_field(name="Moderation", value="`!clear [number]` - Clear messages\n`!announce [text]` - Make announcement", inline=False)
-    e.add_field(name="Info", value="`!help` - Show this list", inline=False)
+
+    e.add_field(
+        name="General Commands",
+        value=(
+            "`!hello` • Say hello\n"
+            "`!embed [text]` • Create embed\n"
+            "`!bloodmoon` • Show Ria message\n"
+            "`!avatar [@user]` • Show avatar\n"
+            "`!say [text]` • Say anonymously"
+        ),
+        inline=False
+    )
+
+    e.add_field(
+        name="Moderation",
+        value=(
+            "`!clear [number]` • Clear messages\n"
+            "`!announce [text]` • Make announcement"
+        ),
+        inline=False
+    )
+
+    e.add_field(
+        name="Information",
+        value="`!help` • Show this list",
+        inline=False
+    )
+
+    e.set_footer(text="7 Commands • Ria")
     await ctx.send(embed=e)
 
 token = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
 bot.run(token)
+    
