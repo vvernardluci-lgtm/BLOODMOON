@@ -157,7 +157,6 @@ async def help_cmd(ctx):
         e.set_author(name=BOT_NAME, icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
         e.set_author(name=BOT_NAME)
-
     e.add_field(
         name="General Commands",
         value=(
@@ -169,7 +168,7 @@ async def help_cmd(ctx):
         ),
         inline=False
     )
-
+    e.add_field(name="\u200b", value="\u200b", inline=False)
     e.add_field(
         name="Moderation",
         value=(
@@ -178,16 +177,14 @@ async def help_cmd(ctx):
         ),
         inline=False
     )
-
+    e.add_field(name="\u200b", value="\u200b", inline=False)
     e.add_field(
         name="Information",
         value="`!help` • Show this list",
         inline=False
     )
-
     e.set_footer(text="7 Commands • Ria")
     await ctx.send(embed=e)
 
 token = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
 bot.run(token)
-    
