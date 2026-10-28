@@ -168,7 +168,6 @@ async def help_cmd(ctx):
         ),
         inline=False
     )
-    e.add_field(name="\u200b", value="\u200b", inline=False)
     e.add_field(
         name="Moderation",
         value=(
@@ -177,7 +176,6 @@ async def help_cmd(ctx):
         ),
         inline=False
     )
-    e.add_field(name="\u200b", value="\u200b", inline=False)
     e.add_field(
         name="Information",
         value="`!help` • Show this list",
