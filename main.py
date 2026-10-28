@@ -23,7 +23,7 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
 def blood_embed(description=None, title=None):
-    embed = discord.Embed(description=description, title=title, color=0x2b2d31)
+    embed = discord.Embed(description=description, title=title, color=0x8B0000)
     try:
         icon = bot.user.display_avatar.url if bot.user and bot.user.display_avatar else None
         embed.set_author(name="BLOODMOON", icon_url=icon)
@@ -82,7 +82,7 @@ async def bloodmoon(ctx):
 @bot.command()
 async def avatar(ctx, member: discord.Member = None):
     member = member or ctx.author
-    e = discord.Embed(title=f"{member.display_name} Avatar", color=0x2b2d31)
+    e = discord.Embed(title=f"{member.display_name} Avatar", color=0x8B0000)
     try:
         e.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
@@ -132,17 +132,21 @@ async def announce(ctx, *, text=None):
     e.set_footer(text="BLOODMOON - Official Announcement")
     await ctx.send(content="@everyone", embed=e, allowed_mentions=discord.AllowedMentions(everyone=True))
 
+
+
 @bot.command(name="help")
 async def help_cmd(ctx):
-    e = discord.Embed(title="BLOODMOON Command Guide", description="Use the ! prefix. Responses are BLOODMOON embeds.", color=0x2b2d31)
+    e = discord.Embed(title="BLOODMOON - All Commands", description="Prefix: ! | All replies are anonymous BLOODMOON embeds", color=0x8B0000)
     try:
         e.set_author(name="BLOODMOON", icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
         e.set_author(name="BLOODMOON")
-    e.add_field(name="General", value="!hello\n!embed [text]\n!bloodmoon\n!avatar [@user]", inline=False)
-    e.add_field(name="Anonymous", value="!say [text]\n!say @member text", inline=False)
-    e.add_field(name="Moderation", value="!clear [number]\n!announce [text]\n!help", inline=False)
-    e.set_footer(text="BLOODMOON - Message commands anonymously")
+    e.add_field(name="General Commands", value="`!hello` - Say hello\n`!embed [text]` - Make text into embed\n`!bloodmoon` - Show BLOODMOON image\n`!avatar [@user]` - Show avatar\n`!say [text]` - Say anonymously", inline=False)
+    e.add_field(name="Moderation Commands", value="`!clear [number]` - Delete 1-100 messages\n`!announce [text]` - Announce with @everyone", inline=False)
+    e.add_field(name="Info", value="`!help` - Show this list\nCooldown: clear 3s | announce 60s", inline=False)
+    e.set_footer(text="BLOODMOON - Anonymous - 7 Commands")
     await ctx.send(embed=e)
 
+
 bot.run(os.getenv("TOKEN"))
+    
