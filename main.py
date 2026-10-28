@@ -1,3 +1,4 @@
+
 import discord
 from discord.ext import commands
 import os
@@ -24,7 +25,7 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
 def blood_embed(description=None, title=None):
-    embed = discord.Embed(description=description, title=title, color=0xFF6B9D)
+    embed = discord.Embed(description=description, title=title, color=0x8B0000)
     try:
         icon = bot.user.display_avatar.url if bot.user and bot.user.display_avatar else None
         embed.set_author(name=BOT_NAME, icon_url=icon)
@@ -67,7 +68,7 @@ async def on_command_error(ctx, error):
 
 @bot.command()
 async def hello(ctx):
-    await ctx.send(embed=blood_embed(description="Hello! 💖"))
+    await ctx.send(embed=blood_embed(description="Hello!"))
 
 @bot.command()
 async def embed(ctx, *, text=None):
@@ -77,13 +78,13 @@ async def embed(ctx, *, text=None):
 
 @bot.command()
 async def bloodmoon(ctx):
-    e = blood_embed(description="Hi! 💖")
+    e = blood_embed(description="Hi! I'm Ria!")
     await ctx.send(embed=e)
 
 @bot.command()
 async def avatar(ctx, member: discord.Member = None):
     member = member or ctx.author
-    e = discord.Embed(title=f"{member.display_name} Avatar", color=0xFF6B9D)
+    e = discord.Embed(title=f"{member.display_name} Avatar", color=0x8B0000)
     try:
         e.set_author(name=BOT_NAME, icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
@@ -120,7 +121,7 @@ async def clear(ctx, number: int = 5):
 @commands.cooldown(1, 60, commands.BucketType.guild)
 async def announce(ctx, *, text=None):
     if not text:
-        return await ctx.send(embed=blood_embed(description="Usage: !announce [text] or !announce @everyone [text] to ping"))
+        return await ctx.send(embed=blood_embed(description="Usage: !announce [text]"))
     try:
         await ctx.message.delete()
     except:
@@ -134,7 +135,7 @@ async def announce(ctx, *, text=None):
         if not clean_text:
             clean_text = "Announcement"
 
-    e = discord.Embed(title="ANNOUNCEMENT", description=clean_text, color=0xFF6B9D)
+    e = discord.Embed(title="ANNOUNCEMENT", description=clean_text, color=0x8B0000)
     try:
         e.set_author(name=BOT_NAME, icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
@@ -145,17 +146,16 @@ async def announce(ctx, *, text=None):
     else:
         await ctx.send(embed=e)
 
-
 @bot.command(name="help")
 async def help_cmd(ctx):
-    e = discord.Embed(title="All Commands", description="Prefix: !", color=0xFF6B9D)
+    e = discord.Embed(title="All Commands", description="Prefix: !", color=0x8B0000)
     try:
         e.set_author(name=BOT_NAME, icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
         e.set_author(name=BOT_NAME)
-    e.add_field(name="General", value="`!hello`\n`!embed [text]`\n`!bloodmoon`\n`!avatar [@user]`\n`!say [text]`", inline=False)
-    e.add_field(name="Moderation", value="`!clear [number]`\n`!announce [text]`\n`!announce @everyone [text]`", inline=False)
-    e.add_field(name="Info", value="`!help`", inline=False)
+    e.add_field(name="General", value="`!hello` - Say hello\n`!embed [text]` - Make embed\n`!bloodmoon` - Show Ria\n`!avatar [@user]` - Show avatar\n`!say [text]` - Say anonymously", inline=False)
+    e.add_field(name="Moderation", value="`!clear [number]` - Clear messages\n`!announce [text]` - Make announcement", inline=False)
+    e.add_field(name="Info", value="`!help` - Show this list", inline=False)
     await ctx.send(embed=e)
 
 token = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
