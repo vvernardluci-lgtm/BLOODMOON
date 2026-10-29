@@ -8,6 +8,7 @@ import traceback
 
 BOT_NAME = "Ria"
 
+# --- 24/7 WEB SERVER - Works even when you close phone Chrome ---
 app = Flask(__name__)
 @app.route('/')
 def home():
@@ -74,6 +75,11 @@ async def hello(ctx):
 async def embed(ctx, *, text=None):
     if not text:
         return await ctx.send(embed=blood_embed(description="Usage: !embed [text]"))
+    # AUTO DELETE the !embed command like !say does
+    try:
+        await ctx.message.delete()
+    except:
+        pass
     await ctx.send(embed=blood_embed(description=text))
 
 @bot.command()
