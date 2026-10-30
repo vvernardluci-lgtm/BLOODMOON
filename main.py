@@ -82,7 +82,7 @@ class ThumbnailManager:
             return None
         # Make it medium 128px instead of tiny 80x80
         if "?size=" not in url:
-            return f"{url}?size=128"
+            return f"{url}?size=100"
         return url
 
     def get_both(self):
@@ -255,23 +255,57 @@ async def embed(ctx, *, text=None):
     if not text:
         return await ctx.send(embed=EmbedFactory.create("📝 Usage: `!embed [text]` • Create an embed.", thumb_url=False))
     await safe_delete(ctx.message)
-    # MEDIUM size for emoji stickers - a little medium, not tiny
-    url = thumb.get_medium_url() or thumb.get()
-    if text.strip().startswith("<:") or text.strip().startswith(":") or (url and len(text.strip()) < 30):
-        # If it's just an emoji/sticker, show MEDIUM size
-        e = discord.Embed(description=text, color=CFG.COLOR)
-        EmbedFactory.set_author(e)
-        e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
-        if url:
-            e.set_image(url=url)  # MEDIUM 128px - a little medium!
-        await ctx.send(embed=e)
+
+    # --- Parse sticker/emoji INSIDE embed to make it MEDIUM ---
+    # Discord inline custom emoji is tiny 22px, so we convert it to MEDIUM image (128px)
+    def extract_custom_emoji_urls(s: str):
+        # Matches <:name:id> and <a:name:id> (animated)
+        ids = re.findall(r"<a?:\w+:(\d+)>", s)
+        urls = []
+        for eid in ids:
+            # Check if animated
+            is_animated = f"<a:" in s and eid in s
+            ext = "gif" if is_animated else "png"
+            urls.append(f"https://cdn.discordapp.com/emojis/{eid}.{ext}?size=100")
+        return urls
+
+    emoji_urls = extract_custom_emoji_urls(text)
+    # Also check for :emoji_10: named emojis from guild
+    guild_emoji_url = None
+    if ":emoji_10:" in text or "emoji_10" in text.lower():
+        gurl = thumb.get_medium_url() or thumb.get()
+        if gurl:
+            guild_emoji_url = gurl
+
+    # Clean text: remove the <: :> codes for cleaner look, keep normal text
+    clean_text = re.sub(r"<a?:\w+:\d+>", "", text).strip()
+    clean_text = clean_text.replace(":emoji_10:", "").strip()
+
+    if not clean_text:
+        clean_text = None
+
+    # Build embed with MEDIUM sticker inside
+    e = discord.Embed(description=clean_text, color=CFG.COLOR)
+    EmbedFactory.set_author(e)
+    e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
+
+    # MEDIUM sticker INSIDE embed (not thumbnail applied by Ria)
+    if emoji_urls:
+        # Use first custom emoji as MEDIUM image inside embed
+        e.set_image(url=emoji_urls[0])
+    elif guild_emoji_url and not clean_text:
+        # If only emoji_10, show it as MEDIUM
+        e.set_image(url=guild_emoji_url)
+    elif guild_emoji_url and clean_text:
+        # Text + emoji_10 -> show text + medium image
+        e.set_image(url=guild_emoji_url)
     else:
-        e = discord.Embed(description=text, color=CFG.COLOR)
-        EmbedFactory.set_author(e)
-        e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
-        if url:
-            e.set_thumbnail(url=url)  # Small for text embeds
-        await ctx.send(embed=e)
+        # No custom emoji, check if text is short sticker, use Ria's thumbnail as small
+        if thumb.get():
+            # For text embeds, keep small thumbnail for Ria branding
+            e.set_thumbnail(url=thumb.get())
+
+    await ctx.send(embed=e)
 
 @bot.command()
 async def avatar(ctx, member: discord.Member = None):
@@ -321,7 +355,25 @@ async def say(ctx, *, message=None):
     if not message:
         return await ctx.send(embed=EmbedFactory.create("📝 Usage: `!say [text]` • Send anonymously.", thumb_url=False))
     await safe_delete(ctx.message)
-    e = EmbedFactory.create(description=message, thumb_url=False)
+
+    # Same medium logic for stickers inside say
+    def extract_urls(s):
+        ids = re.findall(r"<a?:\w+:(\d+)>", s)
+        return [f"https://cdn.discordapp.com/emojis/{eid}.png?size=100" for eid in ids]
+
+    urls = extract_urls(message)
+    clean = re.sub(r"<a?:\w+:\d+>", "", message).strip().replace(":emoji_10:", "").strip() or None
+
+    e = discord.Embed(description=clean, color=CFG.COLOR)
+    EmbedFactory.set_author(e)
+    e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
+    if urls:
+        e.set_image(url=urls[0])  # MEDIUM inside, not tiny inline
+    elif ":emoji_10:" in message or "emoji_10" in message.lower():
+        gurl = thumb.get_medium_url() or thumb.get()
+        if gurl:
+            e.set_image(url=gurl)
+
     await ctx.send(embed=e)
 
 # --- MODERATION - OLD + ADVANCE ---
@@ -434,23 +486,4 @@ async def unmute_cmd(ctx, member: discord.Member = None, *, reason: str = "No re
 async def help_cmd(ctx):
     e = discord.Embed(title=f"✨ {CFG.NAME} • Command List", description=f"**Prefix:** `{CFG.PREFIX}` • **Version:** `v{CFG.VERSION}` • Cute and powerful!", color=CFG.COLOR)
     EmbedFactory.set_author(e)
-    e.add_field(name="💖 General", value="`!hello` • Greet Ria\n`!ping` • Check bot latency\n`!uptime` • Show uptime\n`!embed [text]` • Create an embed\n`!bloodmoon` • Show Ria's message\n`!avatar [@user]` • Display avatar\n`!whois [@user]` • Show user info\n`!say [text]` • Send anonymously", inline=False)
-    e.add_field(name="🛡️ Moderation", value="`!clear [number]` • Clear messages\n`!announce [text]` • Create announcement\n`!mute @user [10m] [reason]` • Mute member\n`!unmute @user [reason]` • Unmute member", inline=False)
-    e.add_field(name="ℹ️ Information", value="`!help` • Display this list", inline=False)
-    url = thumb.get()
-    if url:
-        e.set_thumbnail(url=url)
-    e.set_footer(text=f"13 Commands • {CFG.NAME} v{CFG.VERSION} • Made with 💖")
-    await ctx.send(embed=e)
-
-# --- START (Both TOKEN and BOT_TOKEN) ---
-token = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
-if not token:
-    log.error("No TOKEN or BOT_TOKEN found!")
-    print("ERROR: No TOKEN or BOT_TOKEN found!")
-else:
-    if os.getenv("TOKEN"):
-        log.info("Using TOKEN")
-    else:
-        log.info("Using BOT_TOKEN")
-    bot.run(token)
+    e.add_field(name="💖 General", value="`!hello` • Greet Ria\n`!ping` • Check bot latency\n`!uptime` • Show uptime\n`!embed [text]` • Create an embed\n`!bloodmoon` • Show Ria's message\n`!avatar [
