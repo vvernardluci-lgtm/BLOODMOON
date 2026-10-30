@@ -337,7 +337,11 @@ async def announce(ctx, *, text=None):
     clean = text.replace("@everyone", "").replace("@here", "").strip() or "Announcement"
     e = discord.Embed(title="📢・ANNOUNCEMENT", description=clean, color=CFG.COLOR)
     EmbedFactory.set_author(e)
-    e.set_footer(text=f"Announced by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+    # Anonymous - no name/profile leak, just Ria
+    e.set_footer(text=f"📢 Announcement • {CFG.NAME} v{CFG.VERSION} • Made with 💖")
+    url = thumb.get()
+    if url:
+        e.set_thumbnail(url=url)
     if ping:
         await ctx.send(content="@everyone", embed=e, allowed_mentions=discord.AllowedMentions(everyone=True))
     else:
@@ -423,3 +427,4 @@ if not token:
     log.error("No TOKEN or BOT_TOKEN found!")
 else:
     bot.run(token)
+    
