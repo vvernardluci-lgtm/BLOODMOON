@@ -76,6 +76,15 @@ class ThumbnailManager:
     def get(self) -> Optional[str]:
         return self.get_both()[0]
 
+    def get_medium_url(self) -> Optional[str]:
+        url, _ = self.get_both()
+        if not url:
+            return None
+        # Make it medium 128px instead of tiny 80x80
+        if "?size=" not in url:
+            return f"{url}?size=128"
+        return url
+
     def get_both(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         if self._url and self._time and (now - self._time).total_seconds() < self._ttl:
@@ -138,17 +147,23 @@ class EmbedFactory:
         return embed
 
     @classmethod
-    def create(cls, description: str = None, title: str = None, footer: str = None, thumb_url: bool = False) -> discord.Embed:
+    def create(cls, description: str = None, title: str = None, footer: str = None, thumb_url: bool = False, medium: bool = False) -> discord.Embed:
         e = discord.Embed(description=description, title=title, color=CFG.COLOR)
         cls.set_author(e)
         if footer:
             e.set_footer(text=footer)
         else:
             e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
-        if thumb_url:
-            url = thumb.get()
+        if thumb_url or medium:
+            # MEDIUM size 128px for emoji stickers (not tiny 80x80, not big 400px banner)
+            url = thumb.get_medium_url() or thumb.get()
             if url:
-                e.set_thumbnail(url=url)
+                if medium:
+                    # Medium image (128px) - a little medium, not small, not big banner
+                    e.set_image(url=url)
+                else:
+                    # Small thumbnail for compact embeds
+                    e.set_thumbnail(url=url)
         return e
 
 async def safe_delete(msg):
@@ -229,9 +244,9 @@ async def hello(ctx):
 async def bloodmoon(ctx):
     e = discord.Embed(description=f"Hello! I am **{CFG.NAME}** 🌙✨\nYour adorable blood moon assistant, always here to help!", color=CFG.COLOR)
     EmbedFactory.set_author(e)
-    url = thumb.get()
+    url = thumb.get_medium_url() or thumb.get()
     if url:
-        e.set_thumbnail(url=url)
+        e.set_thumbnail(url=url)  # Small thumbnail for this
     e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
     await ctx.send(embed=e)
 
@@ -240,10 +255,23 @@ async def embed(ctx, *, text=None):
     if not text:
         return await ctx.send(embed=EmbedFactory.create("📝 Usage: `!embed [text]` • Create an embed.", thumb_url=False))
     await safe_delete(ctx.message)
-    e = discord.Embed(description=text, color=CFG.COLOR)
-    EmbedFactory.set_author(e)
-    e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
-    await ctx.send(embed=e)
+    # MEDIUM size for emoji stickers - a little medium, not tiny
+    url = thumb.get_medium_url() or thumb.get()
+    if text.strip().startswith("<:") or text.strip().startswith(":") or (url and len(text.strip()) < 30):
+        # If it's just an emoji/sticker, show MEDIUM size
+        e = discord.Embed(description=text, color=CFG.COLOR)
+        EmbedFactory.set_author(e)
+        e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
+        if url:
+            e.set_image(url=url)  # MEDIUM 128px - a little medium!
+        await ctx.send(embed=e)
+    else:
+        e = discord.Embed(description=text, color=CFG.COLOR)
+        EmbedFactory.set_author(e)
+        e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
+        if url:
+            e.set_thumbnail(url=url)  # Small for text embeds
+        await ctx.send(embed=e)
 
 @bot.command()
 async def avatar(ctx, member: discord.Member = None):
@@ -277,8 +305,8 @@ async def whois(ctx, member: discord.Member = None):
     EmbedFactory.set_author(e)
     url = thumb.get()
     if url:
-        e.set_thumbnail(url=url)
-        e.set_image(url=member.display_avatar.url)
+        e.set_thumbnail(url=url)  # Keep small thumbnail for Ria
+        e.set_image(url=member.display_avatar.url)  # Avatar is big image
     else:
         e.set_thumbnail(url=member.display_avatar.url)
     e.add_field(name="🆔 ID", value=f"`{member.id}`", inline=True)
@@ -328,11 +356,14 @@ async def announce(ctx, *, text=None):
     ping = "@everyone" in text or "@here" in text
     clean = text.replace("@everyone", "").replace("@here", "").strip() or "Announcement"
     url, mention = thumb.get_both()
+    medium_url = thumb.get_medium_url() or url
+    # Option A UPGRADED: Medium inline (22px) + Small thumbnail (80x80) -> Now medium for better visibility
+    # For announce we keep small thumbnail top-right + medium inline emoji
     e = discord.Embed(title="📢・ANNOUNCEMENT", description=f"**{clean}** {mention}", color=CFG.COLOR)
     EmbedFactory.set_author(e)
     e.set_footer(text=f"📢 Announcement • {CFG.NAME} v{CFG.VERSION} • Made with 💖")
     if url:
-        e.set_thumbnail(url=url)
+        e.set_thumbnail(url=url)  # Small thumbnail top-right
     if ping:
         await ctx.send(content="@everyone", embed=e, allowed_mentions=discord.AllowedMentions(everyone=True))
     else:
@@ -423,4 +454,3 @@ else:
     else:
         log.info("Using BOT_TOKEN")
     bot.run(token)
-    
