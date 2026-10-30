@@ -1,7 +1,6 @@
 """
-Ria v2.5 - Advanced, Clean & Smooth
-By: Vernard Luci | Blood Red Embeds | 24/7 Online
-Features: 13 Commands, Anonymous Embeds, Sticker Thumbnail, Mod Locked
+Ria v2.5 - Old Commands Back with Advance Code
+Anonymous, Blood Red, 13 Commands, 24/7
 """
 import discord
 from discord.ext import commands
@@ -15,7 +14,7 @@ import logging
 from typing import Optional
 from dataclasses import dataclass
 
-# --- ADVANCED CONFIG ---
+# --- CONFIG ---
 @dataclass
 class Config:
     NAME: str = "Ria"
@@ -34,7 +33,7 @@ START_TIME = datetime.datetime.now(datetime.timezone.utc)
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 log = logging.getLogger("Ria")
 
-# --- 24/7 FLASK (Advanced) ---
+# --- 24/7 FLASK ---
 app = Flask(__name__)
 @app.route('/')
 def home():
@@ -42,54 +41,30 @@ def home():
     h, m = divmod(int(delta.total_seconds()), 3600)
     m, _ = divmod(m, 60)
     return f"""
-    <html>
-    <head><title>{CFG.NAME} v{CFG.VERSION}</title></head>
-    <body style="margin:0;padding:0;background:#0a0000;color:#ffaaaa;font-family:'Segoe UI',Arial;text-align:center">
-        <div style="padding:60px 20px">
-            <h1 style="font-size:3em;margin:0">✨ {CFG.NAME} ✨</h1>
-            <h2 style="color:#ff6666">v{CFG.VERSION} • BLOOD RED • 24/7 ONLINE</h2>
-            <p style="font-size:1.2em">Uptime: {h}h {m}m | 13 Commands | Made with 💖</p>
-            <p style="opacity:0.7">Host: Render • Monitored by UptimeRobot</p>
-            <div style="margin-top:30px;padding:20px;background:#1a0000;border-radius:15px;display:inline-block">
-                <p>✅ Bot is alive and smooth!</p>
-                <p>🔗 bloodmoon-12.onrender.com</p>
-            </div>
-        </div>
-    </body>
-    </html>
+    <html><body style="background:#0a0000;color:#ffaaaa;font-family:Arial;text-align:center;padding:60px">
+    <h1>✨ {CFG.NAME} v{CFG.VERSION} IS ALIVE ✨</h1>
+    <p>Uptime: {h}h {m}m | 13 Commands | Made with 💖</p>
+    </body></html>
     """
 
 @app.route('/status')
 def status():
     delta = datetime.datetime.now(datetime.timezone.utc) - START_TIME
-    return jsonify({
-        "bot": CFG.NAME,
-        "version": CFG.VERSION,
-        "online": True,
-        "uptime_seconds": int(delta.total_seconds()),
-        "commands": 13
-    })
+    return jsonify({"bot": CFG.NAME, "version": CFG.VERSION, "online": True, "uptime": int(delta.total_seconds())})
 
 def run_flask():
     app.run(host='0.0.0.0', port=CFG.PORT)
 
 threading.Thread(target=run_flask, daemon=True).start()
-log.info(f"Flask 24/7 server started on port {CFG.PORT}")
+log.info(f"Flask started on port {CFG.PORT}")
 
-# --- BOT SETUP ---
+# --- BOT ---
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+bot = commands.Bot(command_prefix=CFG.PREFIX, intents=intents, help_command=None, case_insensitive=True, strip_after_prefix=True)
 
-bot = commands.Bot(
-    command_prefix=CFG.PREFIX,
-    intents=intents,
-    help_command=None,
-    case_insensitive=True,
-    strip_after_prefix=True
-)
-
-# --- ADVANCED THUMBNAIL MANAGER (Medium Inline + Small Thumbnail) ---
+# --- THUMBNAIL MANAGER (Old + Advance) ---
 class ThumbnailManager:
     def __init__(self, ttl: int = 300):
         self._url: Optional[str] = None
@@ -102,21 +77,18 @@ class ThumbnailManager:
         return self.get_both()[0]
 
     def get_both(self):
-        """Returns (url for small thumbnail top-right, mention for medium inline)"""
         now = datetime.datetime.now(datetime.timezone.utc)
         if self._url and self._time and (now - self._time).total_seconds() < self._ttl:
             return self._url, self._mention
 
         url = None
-        mention = "💖"  # Fallback for medium inline
+        mention = "💖"
         try:
-            # 1. Bot emojis
             for emoji in bot.emojis:
                 if emoji.name == "emoji_10":
                     url = str(emoji.url)
-                    mention = str(emoji)  # <:emoji_10:ID> for medium inline in description
+                    mention = str(emoji)
                     break
-            # 2. Guilds
             if not url:
                 for guild in bot.guilds:
                     try:
@@ -141,7 +113,6 @@ class ThumbnailManager:
                             break
                     except:
                         pass
-            # 3. Fallback
             if not url:
                 url = self._first_url
                 mention = "✨"
@@ -155,7 +126,7 @@ class ThumbnailManager:
 
 thumb = ThumbnailManager(ttl=CFG.CACHE_TTL)
 
-# --- ADVANCED EMBED FACTORY ---
+# --- EMBED FACTORY (Old Commands Anonymous) ---
 class EmbedFactory:
     @staticmethod
     def set_author(embed: discord.Embed) -> discord.Embed:
@@ -167,22 +138,19 @@ class EmbedFactory:
         return embed
 
     @classmethod
-    def create(cls, description: str = None, title: str = None, footer: str = None, thumb_url: bool = True) -> discord.Embed:
+    def create(cls, description: str = None, title: str = None, footer: str = None, thumb_url: bool = False) -> discord.Embed:
         e = discord.Embed(description=description, title=title, color=CFG.COLOR)
         cls.set_author(e)
         if footer:
             e.set_footer(text=footer)
+        else:
+            e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
         if thumb_url:
             url = thumb.get()
             if url:
                 e.set_thumbnail(url=url)
         return e
 
-    @classmethod
-    def error(cls, msg: str) -> discord.Embed:
-        return cls.create(description=f"❌ {msg}", thumb_url=False)
-
-# --- ADVANCED HELPERS ---
 async def safe_delete(msg):
     try:
         await msg.delete()
@@ -251,40 +219,45 @@ async def on_command_error(ctx, error):
     log.error(f"Command error: {error}")
     traceback.print_exception(type(error), error, error.__traceback__)
 
-# --- GENERAL COMMANDS (Smooth & Presentable) ---
+# --- GENERAL - OLD COMMANDS BACK (Anonymous, Presentable) ---
 @bot.command()
 async def hello(ctx):
-    e = EmbedFactory.create(description=f"Hello {ctx.author.mention}! I am **{CFG.NAME}** ✨\nSo nice to see you!", footer=f"Requested by {ctx.author.display_name}", thumb_url=False)
+    e = EmbedFactory.create(description=f"Hello {ctx.author.mention}! I am **{CFG.NAME}** ✨\nNice to see you!", thumb_url=False)
     await ctx.send(embed=e)
 
 @bot.command(aliases=["ria"])
 async def bloodmoon(ctx):
-    e = EmbedFactory.create(description=f"Hey! I am **{CFG.NAME}** 🌙✨\nYour cute blood moon assistant, always here to help you!", footer=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖", thumb_url=True)
+    e = discord.Embed(description=f"Hello! I am **{CFG.NAME}** 🌙✨\nYour adorable blood moon assistant, always here to help!", color=CFG.COLOR)
+    EmbedFactory.set_author(e)
+    url = thumb.get()
+    if url:
+        e.set_thumbnail(url=url)
+    e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
     await ctx.send(embed=e)
 
 @bot.command()
 async def embed(ctx, *, text=None):
     if not text:
-        return await ctx.send(embed=EmbedFactory.create("📝 Usage: `!embed [text]` • Create a custom embed.", thumb_url=False))
+        return await ctx.send(embed=EmbedFactory.create("📝 Usage: `!embed [text]` • Create an embed.", thumb_url=False))
     await safe_delete(ctx.message)
     e = discord.Embed(description=text, color=CFG.COLOR)
     EmbedFactory.set_author(e)
-    e.set_footer(text=f"Created by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+    e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
     await ctx.send(embed=e)
 
 @bot.command()
 async def avatar(ctx, member: discord.Member = None):
     member = member or ctx.author
-    e = discord.Embed(title=f"🖼️ {member.display_name}'s Avatar", description=f"Avatar of {member.mention}\n[Download Link]({member.display_avatar.url})", color=CFG.COLOR)
+    e = discord.Embed(title=f"🖼️ {member.display_name}'s Avatar", description=f"Here is the avatar of {member.mention}!\n[Download]({member.display_avatar.url})", color=CFG.COLOR)
     EmbedFactory.set_author(e)
     e.set_image(url=member.display_avatar.url)
-    e.set_footer(text=f"Requested by {ctx.author.display_name}")
+    e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
     await ctx.send(embed=e)
 
 @bot.command()
 async def ping(ctx):
     ms = round(bot.latency * 1000)
-    e = EmbedFactory.create(description=f"🏓 Pong! Latency: `{ms}ms` ✨", footer=f"{CFG.NAME} v{CFG.VERSION}", thumb_url=False)
+    e = EmbedFactory.create(description=f"🏓 Pong! Latency: `{ms}ms` ✨", thumb_url=False)
     await ctx.send(embed=e)
 
 @bot.command()
@@ -292,7 +265,7 @@ async def uptime(ctx):
     delta = datetime.datetime.now(datetime.timezone.utc) - START_TIME
     h, r = divmod(int(delta.total_seconds()), 3600)
     m, s = divmod(r, 60)
-    e = EmbedFactory.create(description=f"⏰ Online for `{h}h {m}m {s}s` • Always here for you!", footer=f"Since {START_TIME.strftime('%Y-%m-%d %H:%M UTC')}", thumb_url=False)
+    e = EmbedFactory.create(description=f"⏰ Online for `{h}h {m}m {s}s`!", thumb_url=False)
     await ctx.send(embed=e)
 
 @bot.command(aliases=["userinfo"])
@@ -300,7 +273,7 @@ async def whois(ctx, member: discord.Member = None):
     member = member or ctx.author
     joined = f"<t:{int(member.joined_at.timestamp())}:R>" if member.joined_at else "Unknown"
     created = f"<t:{int(member.created_at.timestamp())}:R>"
-    e = discord.Embed(title=f"👤 {member.display_name}", description=f"Information about {member.mention}", color=CFG.COLOR)
+    e = discord.Embed(title=f"👤 {member.display_name}'s Info", color=CFG.COLOR)
     EmbedFactory.set_author(e)
     url = thumb.get()
     if url:
@@ -312,7 +285,7 @@ async def whois(ctx, member: discord.Member = None):
     e.add_field(name="📅 Created", value=created, inline=True)
     e.add_field(name="📥 Joined", value=joined, inline=True)
     e.add_field(name="🎭 Roles", value=f"`{len(member.roles)-1}` roles", inline=True)
-    e.set_footer(text=f"Requested by {ctx.author.display_name}")
+    e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
     await ctx.send(embed=e)
 
 @bot.command()
@@ -323,28 +296,24 @@ async def say(ctx, *, message=None):
     e = EmbedFactory.create(description=message, thumb_url=False)
     await ctx.send(embed=e)
 
-# --- MODERATION (Advanced & Smooth) ---
+# --- MODERATION - OLD + ADVANCE ---
 @bot.command()
 @commands.has_permissions(manage_messages=True)
 @commands.bot_has_permissions(manage_messages=True)
 @commands.cooldown(1, 3, commands.BucketType.user)
 async def clear(ctx, number: int = 5):
-    # Advanced clear - works smoothly
     if number < 1 or number > CFG.MAX_CLEAR:
         return await ctx.send(embed=EmbedFactory.create(f"🧹 Enter a number between `1` and `{CFG.MAX_CLEAR}`.", thumb_url=False), delete_after=4)
     try:
-        # Delete the !clear command itself first
         await safe_delete(ctx.message)
-        # Purge number messages (not including command since already deleted)
         deleted = await ctx.channel.purge(limit=number)
-        e = EmbedFactory.create(description=f"🧹 Successfully cleared `{len(deleted)}` messages!", footer=f"Cleared by {ctx.author.display_name}", thumb_url=False)
+        e = EmbedFactory.create(description=f"🧹 Cleared `{len(deleted)}` messages!", thumb_url=False)
         msg = await ctx.send(embed=e)
-        # Auto-delete success message after 3 sec
         import asyncio
         await asyncio.sleep(3)
         await safe_delete(msg)
     except discord.Forbidden:
-        await ctx.send(embed=EmbedFactory.create("❌ I need `Manage Messages` permission to clear! Please give me that permission.", thumb_url=False), delete_after=6)
+        await ctx.send(embed=EmbedFactory.create("❌ I need `Manage Messages` permission!", thumb_url=False), delete_after=6)
     except Exception as ex:
         log.error(f"Clear error: {ex}")
         await ctx.send(embed=EmbedFactory.create(f"❌ Clear failed: `{ex}`", thumb_url=False), delete_after=5)
@@ -358,14 +327,11 @@ async def announce(ctx, *, text=None):
     await safe_delete(ctx.message)
     ping = "@everyone" in text or "@here" in text
     clean = text.replace("@everyone", "").replace("@here", "").strip() or "Announcement"
-    # Option A: Medium inline emojis + small thumbnail top-right
     url, mention = thumb.get_both()
-    # Words bigger with bold + medium inline emoji at end
     e = discord.Embed(title="📢・ANNOUNCEMENT", description=f"**{clean}** {mention}", color=CFG.COLOR)
     EmbedFactory.set_author(e)
     e.set_footer(text=f"📢 Announcement • {CFG.NAME} v{CFG.VERSION} • Made with 💖")
     if url:
-        # Small thumbnail top-right (medium size feel)
         e.set_thumbnail(url=url)
     if ping:
         await ctx.send(content="@everyone", embed=e, allowed_mentions=discord.AllowedMentions(everyone=True))
@@ -404,7 +370,7 @@ async def mute_cmd(ctx, member: discord.Member = None, time: str = None, *, reas
         url = thumb.get()
         if url:
             e.set_thumbnail(url=url)
-        e.set_footer(text=f"🛡️ Muted by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
         await ctx.send(embed=e)
     except discord.Forbidden:
         await ctx.send(embed=EmbedFactory.create("❌ I cannot mute this user! My role must be higher.", thumb_url=False), delete_after=6)
@@ -428,7 +394,7 @@ async def unmute_cmd(ctx, member: discord.Member = None, *, reason: str = "No re
         url = thumb.get()
         if url:
             e.set_thumbnail(url=url)
-        e.set_footer(text=f"🛡️ Unmuted by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
         await ctx.send(embed=e)
     except Exception as ex:
         await ctx.send(embed=EmbedFactory.create(f"❌ Unmute failed: `{ex}`", thumb_url=False), delete_after=6)
@@ -446,17 +412,15 @@ async def help_cmd(ctx):
     e.set_footer(text=f"13 Commands • {CFG.NAME} v{CFG.VERSION} • Made with 💖")
     await ctx.send(embed=e)
 
-# --- START (Supports BOTH TOKEN and BOT_TOKEN) ---
+# --- START (Both TOKEN and BOT_TOKEN) ---
 token = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
 if not token:
-    log.error("No TOKEN or BOT_TOKEN found! Please set TOKEN in Render Environment!")
-    print("ERROR: No TOKEN or BOT_TOKEN found! Set TOKEN in Render Environment Variables!")
+    log.error("No TOKEN or BOT_TOKEN found!")
+    print("ERROR: No TOKEN or BOT_TOKEN found!")
 else:
-    # Log which token env is used (without showing token)
     if os.getenv("TOKEN"):
-        log.info("Using TOKEN from Environment")
-        print("Using TOKEN from Environment")
+        log.info("Using TOKEN")
     else:
-        log.info("Using BOT_TOKEN from Environment")
-        print("Using BOT_TOKEN from Environment")
+        log.info("Using BOT_TOKEN")
     bot.run(token)
+    
