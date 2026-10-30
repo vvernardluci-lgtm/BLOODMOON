@@ -1,6 +1,7 @@
 """
 Ria v2.5 - Old Commands Back with Advance Code
 Anonymous, Blood Red, 13 Commands, 24/7
+Fixed: Announce normal font + sticker, no big bold, no big image
 """
 import discord
 from discord.ext import commands
@@ -322,17 +323,22 @@ async def clear(ctx, number: int = 5):
 @commands.has_permissions(manage_guild=True)
 @commands.cooldown(1, 60, commands.BucketType.guild)
 async def announce(ctx, *, text=None):
+    """
+    FIXED: Normal font (not bold big), together with sticker (small thumbnail), remove big image ideal
+    """
     if not text:
         return await ctx.send(embed=EmbedFactory.create("📢 Usage: `!announce [text]` • Create an announcement.", thumb_url=False))
     await safe_delete(ctx.message)
     ping = "@everyone" in text or "@here" in text
     clean = text.replace("@everyone", "").replace("@here", "").strip() or "Announcement"
     url, mention = thumb.get_both()
-    e = discord.Embed(title="📢・ANNOUNCEMENT", description=f"**{clean}** {mention}", color=CFG.COLOR)
+    # FIXED: Normal font (not **bold** big), with sticker small thumbnail, no big image
+    e = discord.Embed(title="📢・ANNOUNCEMENT", description=f"{clean} {mention}", color=CFG.COLOR)
     EmbedFactory.set_author(e)
     e.set_footer(text=f"📢 Announcement • {CFG.NAME} v{CFG.VERSION} • Made with 💖")
     if url:
-        e.set_thumbnail(url=url)
+        e.set_thumbnail(url=url)  # Small thumbnail top-right, not big image
+    # Removed big image ideal - no set_image banner
     if ping:
         await ctx.send(content="@everyone", embed=e, allowed_mentions=discord.AllowedMentions(everyone=True))
     else:
@@ -423,3 +429,4 @@ else:
     else:
         log.info("Using BOT_TOKEN")
     bot.run(token)
+    
