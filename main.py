@@ -9,7 +9,7 @@ import datetime
 import re
 
 BOT_NAME = "Ria"
-BOT_VERSION = "2.5"
+BOT_VERSION = "2.5.1"
 BOT_COLOR = 0x8B0000
 BOT_START_TIME = datetime.datetime.now(datetime.timezone.utc)
 
@@ -33,20 +33,82 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None, case_insensitive=True)
 
-# --- CUSTOM STICKER :emoji_10: FOR THUMBNAIL ---
-# Auto-detects emoji named "emoji_10" in your server
-# Or set direct URL: EMOJI_10_URL = "https://cdn.discordapp.com/emojis/123456789.png"
+# --- CUSTOM STICKER CODE - IMPROVED v2.5.1 ---
+# Now properly shows first guild sticker as fallback (the anime girl you saw!)
 EMOJI_10_URL = None
+EMOJI_10_MENTION = "💖"
+FIRST_STICKER_URL = None
+FIRST_STICKER_NAME = None
 
-def get_emoji_10_url():
-    """Get :emoji_10: sticker URL for thumbnail"""
+def get_emoji_10():
+    """Find :emoji_10: OR use first guild sticker as fallback"""
+    global EMOJI_10_URL, EMOJI_10_MENTION, FIRST_STICKER_URL, FIRST_STICKER_NAME
     try:
+        # 1. Try to find exact :emoji_10: emoji
         for emoji in bot.emojis:
             if emoji.name == "emoji_10":
-                return str(emoji.url)
+                EMOJI_10_URL = str(emoji.url)
+                EMOJI_10_MENTION = str(emoji)
+                return EMOJI_10_URL, EMOJI_10_MENTION
+        # 2. Search all guilds
+        for guild in bot.guilds:
+            # Save first sticker info for fallback
+            try:
+                if guild.stickers and not FIRST_STICKER_URL:
+                    first = guild.stickers[0]
+                    FIRST_STICKER_URL = str(first.url)
+                    FIRST_STICKER_NAME = first.name
+            except:
+                pass
+            
+            # Check guild emojis for emoji_10
+            for emoji in guild.emojis:
+                if emoji.name.lower() == "emoji_10":
+                    EMOJI_10_URL = str(emoji.url)
+                    EMOJI_10_MENTION = str(emoji)
+                    return EMOJI_10_URL, EMOJI_10_MENTION
+            
+            # Check guild stickers for emoji_10
+            try:
+                for sticker in guild.stickers:
+                    if "emoji_10" in sticker.name.lower():
+                        EMOJI_10_URL = str(sticker.url)
+                        EMOJI_10_MENTION = f":{sticker.name}:"
+                        return EMOJI_10_URL, EMOJI_10_MENTION
+            except:
+                pass
+        
+        # 3. FALLBACK: Use first guild sticker (the anime girl you saw!)
+        if FIRST_STICKER_URL:
+            EMOJI_10_URL = FIRST_STICKER_URL
+            EMOJI_10_MENTION = f":{FIRST_STICKER_NAME}:" if FIRST_STICKER_NAME else "✨"
+            return EMOJI_10_URL, EMOJI_10_MENTION
+            
+    except Exception as ex:
+        print(f"Emoji/Sticker search error: {ex}")
+        import traceback
+        traceback.print_exc()
+    
+    return EMOJI_10_URL, EMOJI_10_MENTION
+
+def get_first_sticker():
+    """Get first guild sticker directly (for debugging)"""
+    try:
+        for guild in bot.guilds:
+            if guild.stickers:
+                sticker = guild.stickers[0]
+                return str(sticker.url), sticker.name
     except:
         pass
-    return EMOJI_10_URL
+    return None, None
+
+def get_emoji_10_url():
+    url, mention = get_emoji_10()
+    return url
+
+def get_emoji_10_mention():
+    url, mention = get_emoji_10()
+    return mention
 
 def blood_embed(description=None, title=None, footer_text=None, timestamp=False):
     embed = discord.Embed(description=description, title=title, color=BOT_COLOR)
@@ -76,9 +138,16 @@ def parse_time(time_str):
 @bot.event
 async def on_ready():
     print(f"✨ {BOT_NAME} v{BOT_VERSION} ONLINE as {bot.user} | {len(bot.guilds)} servers")
-    emoji_url = get_emoji_10_url()
-    if emoji_url:
-        print(f"✅ Found :emoji_10: thumbnail: {emoji_url}")
+    url, mention = get_emoji_10()
+    first_url, first_name = get_first_sticker()
+    if first_url:
+        print(f"📌 First guild sticker: {first_name} | {first_url}")
+    if url:
+        print(f"✅ Using thumbnail: {mention} | {url}")
+        if first_url and url == first_url:
+            print(f"   (This is the first guild sticker as fallback)")
+    else:
+        print(f"⚠️ No emoji_10 or stickers found yet")
     await bot.change_presence(activity=discord.Game(name=f"{BOT_NAME} v{BOT_VERSION} | !help"))
 
 @bot.event
@@ -124,10 +193,10 @@ async def hello(ctx):
 
 @bot.command(aliases=["ria"])
 async def bloodmoon(ctx):
-    e = blood_embed(description=f"Hello! I am **{BOT_NAME}** 🌙✨\nYour adorable blood moon assistant, always here to help!", footer_text=f"{BOT_NAME} v{BOT_VERSION} • Made with 💖")
-    emoji_url = get_emoji_10_url()
-    if emoji_url:
-        e.set_thumbnail(url=emoji_url)
+    url, mention = get_emoji_10()
+    e = blood_embed(description=f"Hello! I am **{BOT_NAME}** 🌙✨\nYour adorable blood moon assistant, always here to help!", footer_text=f"{BOT_NAME} v{BOT_VERSION} • Made with {mention}")
+    if url:
+        e.set_thumbnail(url=url)
     await ctx.send(embed=e)
 
 @bot.command()
@@ -182,10 +251,9 @@ async def whois(ctx, member: discord.Member = None):
         e.set_author(name=BOT_NAME, icon_url=bot.user.display_avatar.url if bot.user else None)
     except:
         e.set_author(name=BOT_NAME)
-    # --- THUMBNAIL IS NOW :emoji_10: STICKER ---
-    emoji_url = get_emoji_10_url()
-    if emoji_url:
-        e.set_thumbnail(url=emoji_url)
+    url, mention = get_emoji_10()
+    if url:
+        e.set_thumbnail(url=url)
         e.set_image(url=member.display_avatar.url)
     else:
         e.set_thumbnail(url=member.display_avatar.url)
@@ -193,7 +261,7 @@ async def whois(ctx, member: discord.Member = None):
     e.add_field(name="📅 Created", value=created, inline=True)
     e.add_field(name="📥 Joined", value=joined, inline=True)
     e.add_field(name="🎭 Roles", value=f"`{len(member.roles)-1}` roles", inline=True)
-    e.set_footer(text=f"Requested by {ctx.author.display_name} • :emoji_10:")
+    e.set_footer(text=f"Requested by {ctx.author.display_name} • {mention}")
     await ctx.send(embed=e)
 
 @bot.command()
@@ -282,9 +350,9 @@ async def mute_cmd(ctx, member: discord.Member = None, time: str = None, *, reas
         e.add_field(name="⏰ Duration", value=f"`{time}`", inline=True)
         e.add_field(name="\u200b", value="\u200b", inline=True)
         e.add_field(name="📝 Reason", value=f"```{reason}```", inline=False)
-        emoji_url = get_emoji_10_url()
-        if emoji_url:
-            e.set_thumbnail(url=emoji_url)
+        url, mention = get_emoji_10()
+        if url:
+            e.set_thumbnail(url=url)
         e.set_footer(text=f"🛡️ Muted by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
         await ctx.send(embed=e)
     except discord.Forbidden:
@@ -312,9 +380,9 @@ async def unmute_cmd(ctx, member: discord.Member = None, *, reason: str = "No re
             e.set_author(name=BOT_NAME)
         e.add_field(name="👤 User", value=f"{member.mention}\n`{member.display_name}`", inline=False)
         e.add_field(name="📝 Reason", value=f"```{reason}```", inline=False)
-        emoji_url = get_emoji_10_url()
-        if emoji_url:
-            e.set_thumbnail(url=emoji_url)
+        url, mention = get_emoji_10()
+        if url:
+            e.set_thumbnail(url=url)
         e.set_footer(text=f"🛡️ Unmuted by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
         await ctx.send(embed=e)
     except Exception as ex:
@@ -322,6 +390,7 @@ async def unmute_cmd(ctx, member: discord.Member = None, *, reason: str = "No re
 
 @bot.command(name="help")
 async def help_cmd(ctx):
+    url, mention = get_emoji_10()
     e = discord.Embed(
         title=f"✨ {BOT_NAME} • Command List",
         description=f"**Prefix:** `!` • **Version:** `v{BOT_VERSION}` • Cute and powerful!",
@@ -360,10 +429,9 @@ async def help_cmd(ctx):
         value="`!help` • Display this list",
         inline=False
     )
-    emoji_url = get_emoji_10_url()
-    if emoji_url:
-        e.set_thumbnail(url=emoji_url)
-    e.set_footer(text=f"13 Commands • {BOT_NAME} v{BOT_VERSION} • :emoji_10: • Made with 💖")
+    if url:
+        e.set_thumbnail(url=url)
+    e.set_footer(text=f"13 Commands • {BOT_NAME} v{BOT_VERSION} • {mention} • Made with 💖")
     await ctx.send(embed=e)
 
 # --- START ---
@@ -372,4 +440,4 @@ if not token:
     print("ERROR: No TOKEN or BOT_TOKEN found!")
 else:
     bot.run(token)
-    
+                
