@@ -446,24 +446,21 @@ async def clear(ctx, number: int = 5):
 @commands.cooldown(1, 60, commands.BucketType.guild)
 async def announce(ctx, *, text=None):
     """
-    FIXED: Bold medium font, no sticker (removed as you requested)
-    - Was bold big (**text** with big title), now bold medium
-    - No sticker thumbnail/image - clean
+    FIXED: Bold medium font, no sticker, PINGS @everyone when announcement comes
+    - Bold medium **text**, no sticker, auto pings everyone
     """
     if not text:
         return await ctx.send(embed=EmbedFactory.create("📢 Usage: `!announce [text]` • Create an announcement.", thumb_url=False))
     await safe_delete(ctx.message)
-    ping = "@everyone" in text or "@here" in text
+    # Clean @everyone/@here from text if present, but ALWAYS ping when announcement comes
     clean = text.replace("@everyone", "").replace("@here", "").strip() or "Announcement"
     # Bold medium font, no sticker - as requested
     e = discord.Embed(title="📢・ANNOUNCEMENT", description=f"**{clean}**", color=CFG.COLOR)
     EmbedFactory.set_author(e)
     e.set_footer(text=f"📢 Announcement • {CFG.NAME} v{CFG.VERSION} • Made with 💖")
-    # No sticker - removed
-    if ping:
-        await ctx.send(content="@everyone", embed=e, allowed_mentions=discord.AllowedMentions(everyone=True))
-    else:
-        await ctx.send(embed=e)
+    # FIXED: Always ping @everyone when Announcement came (as requested)
+    # Previously only pinged if @everyone in text, now always pings
+    await ctx.send(content="@everyone", embed=e, allowed_mentions=discord.AllowedMentions(everyone=True))
 
 @bot.command(name="mute")
 @commands.has_permissions(moderate_members=True)
