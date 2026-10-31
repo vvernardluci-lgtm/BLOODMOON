@@ -257,14 +257,15 @@ def get_cute_reply(user_message: str, username: str, user_id, history=None) -> s
                 for m in recent:
                     memory_context += f"User: {m.get('user','')}\nRia: {m.get('ria','')}\n"
             
-            system_prompt = f"""You are Ria, a friendly Discord assistant.
-- Talk like a normal person would be, not like bot! Less emoji, max 1 emoji, natural
-- Don't keep mentioning the user's name, don't say their name every reply, talk normal
+            system_prompt = f"""You are Ria, a friendly Discord assistant, talking like a real person.
+- Talk like a normal person would be, short, natural, casual, not like bot codes!
+- Don't sound like AI, don't sound like codes, talk like human texting
+- Less emoji, max 1 emoji, or no emoji, natural
+- Don't keep mentioning user's name, don't repeat same phrases
 - You have 2000+ memory, you remember Creator forever
-- You are sweet, friendly, helpful, cute but normal
-- Keep replies short (1-2 sentences), like normal person chatting
-- No embed, just normal chat, no need mention, no name mention
-- Don't be romantic girlfriend, just cute friendly
+- Keep replies short (1-2 sentences), casual, like Discord DM
+- No embed, just normal chat, human-like, not "Ria is..." style
+- Don't be romantic girlfriend, just friendly, natural
 Memory:
 {memory_context}"""
             
@@ -297,46 +298,91 @@ Memory:
         except Exception as ex:
             log.error(f"Groq brain error: {ex}")
     
-    # Fallback - no mentioning, less emoji, normal person
+    # Fixed: Not sounding like codes - talk like normal person, human-like, not fallback codes
     msg_lower = user_message.lower()
+    # Human-like responses, not like bot codes
     if any(w in msg_lower for w in ["hello", "hi", "hey", "helo"]):
         replies = [
-            f"Hehe hi! Ria is here, how are you today?",
-            f"Hello! Ria missed you, whats up?",
-            f"Hi! Happy to see you!",
-            f"Hellooo, Ria is excited!"
+            f"hehe hi! how are you today?",
+            f"helloo! whats up?",
+            f"hi! happy to see you",
+            f"heyy, im here!",
+            f"oh hi! how's your day going?"
         ]
         return random.choice(replies)
     if "how are you" in msg_lower or "how r u" in msg_lower:
         replies = [
-            f"Ria is good! Thanks for asking, how about you?",
-            f"I'm happy! Being with you makes Ria happy",
-            f"Ria is great! Thank you for caring",
+            f"im good! thanks for asking, how about you?",
+            f"im doing okay, just chilling, you?",
+            f"pretty good! thanks for checking",
+            f"im alright, how are you doing?"
         ]
         return random.choice(replies)
     if "thank" in msg_lower:
-        return f"You're welcome! Happy to help"
+        replies = [
+            f"you're welcome! happy to help",
+            f"no problem at all!",
+            f"anytime!",
+            f"of course!"
+        ]
+        return random.choice(replies)
     if "cute" in msg_lower or "adorable" in msg_lower:
-        return f"Ria is blushing, thank you"
+        return f"aww stop, you're making me shy"
     if "love you" in msg_lower or "love u" in msg_lower:
-        return f"Aww, Ria appreciates you so much, you're sweet, thank you"
+        return f"aww that's sweet of you, thank you"
     if "miss you" in msg_lower:
-        return f"Ria missed you too! Where were you? Tell Ria"
+        return f"i missed you too, where were you?"
     if "sad" in msg_lower or "tired" in msg_lower:
-        return f"Aww... Ria is here for you, don't be sad, you got this"
+        replies = [
+            f"aww, are you okay? im here if you need to talk",
+            f"that sucks, hope you feel better soon",
+            f"im here for you, don't worry",
+            f"take it easy okay? you got this"
+        ]
+        return random.choice(replies)
     if "happy" in msg_lower:
-        return f"Yay you're happy! Ria is happy too, tell me more"
-    cute_replies = [
-        f"You said '{user_message[:40]}'? That's interesting, tell me more",
-        f"Ria is listening, you said {user_message[:30]}... want to know more",
-        f"Hehe, Ria remembers you, you're fun",
-        f"That's cool, Ria is thinking about it",
-        f"Woah, Ria didn't know that, you're smart",
-        f"You're cute when talking, Ria likes chatting with you",
-        f"Ria is happy to talk with you, what else?",
-        f"Hehe, Ria is giggling, you're funny",
+        return f"yayy that's good to hear, tell me more about it"
+    # For normal chat - not sounding like codes, more human natural
+    if "really" in msg_lower:
+        replies = [
+            f"yeah really!",
+            f"mhm, for real",
+            f"yes really, why?",
+            f"of course, what do you mean?"
+        ]
+        return random.choice(replies)
+    if "weird" in msg_lower or "hmm" in msg_lower:
+        replies = [
+            f"hmm yeah it is kinda weird",
+            f"right? i thought so too",
+            f"lol yeah, what do you think about it?",
+            f"ikr, weird right?"
+        ]
+        return random.choice(replies)
+    if "sentence" in msg_lower or "meant" in msg_lower:
+        replies = [
+            f"oh sorry, what do you mean?",
+            f"ah my bad, what did you mean then?",
+            f"oops sorry, tell me again?",
+            f"ohh i see, sorry about that"
+        ]
+        return random.choice(replies)
+    # Generic natural responses - not like codes
+    natural_replies = [
+        f"ohh i see, yeah that makes sense",
+        f"hmm interesting, tell me more",
+        f"lol really? what happened then?",
+        f"oh yeah? how so?",
+        f"wait fr? that's cool",
+        f"ah i get it, then what?",
+        f"ohh okay, i understand",
+        f"mhm, and then?",
+        f"oh wow, that's actually interesting",
+        f"yeah? what do you think about it?",
+        f"lol yeah i know right",
+        f"ohh yeah, i was thinking about that too",
     ]
-    return random.choice(cute_replies)
+    return random.choice(natural_replies)
 
 thumb = ThumbnailManager(ttl=CFG.CACHE_TTL)
 
@@ -413,8 +459,8 @@ async def on_message(message):
     try:
         history = ria_memory.get(str(user_id), [])
         reply = get_cute_reply(user_message, message.author.display_name, user_id, history)
-        # Fixed: Natural typing, not random - based on reply length (0.5-1.5 sec)
-        typing_delay = min(1.5, max(0.5, len(reply) * 0.02))
+        # Fixed: Response 5 second - like normal person thinking, not instant codes
+        typing_delay = 5.0
         async with message.channel.typing():
             await asyncio.sleep(typing_delay)
             add_memory(user_id, user_message, reply)
