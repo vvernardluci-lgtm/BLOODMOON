@@ -1,26 +1,25 @@
 """
 ================================================================================
-Ria v2.5 - Old Commands Back with Advance Code - LONGER Version
-Anonymous, Blood Red, 13 Commands + Hidden !imback ria, 24/7, Clear & Organized
-Fixed: Bold medium, no sticker, TOKEN & BOT_TOKEN both, hidden !hi, secret key
+Ria v2.5 - BLOODMOON with Groq Brain + 7 Hour Key Limit
+Anonymous, Blood Red, 13 Commands + Hidden !imback ria, 24/7
+Fixed: No mention needed, less emoji, natural typing, no keep mentioning
+New: 7 Hour Limit on key - auto clear conversation after 7h no reply
 ================================================================================
 Bot: Ria v2.5
 Author: Vernard Luci (Lucky 15)
-Guild: Blood Moon / Staff
 Features:
-- 13 Commands (8 General, 4 Moderation, 1 Information) + Hidden !imback ria (not in help)
+- 13 Commands (8 General, 4 Moderation, 1 Information) + Hidden !imback ria
 - Anonymous Embeds (Ria only on top, Made with 💖, no name leak)
 - Blood Red Color (0x8B0000)
 - Thumbnail: Emoji_10 + First Guild Sticker
 - Announce: Bold medium font (**text**), no sticker, pings @everyone
 - 24/7 Online: Flask + UptimeRobot
 - Supports Both TOKEN and BOT_TOKEN
-- Hidden !imback ria: Only creator, secret key scan, greets "Welcome back, My Creator!! 💓"
-- 2000+ Memory: Saves forever, cute adorable chat, no embed, typing like person
-- Advanced Code: Config, ThumbnailManager, EmbedFactory, TimeParser, safe_delete
-- Clear & Organized, No !hello key spam (fixed as requested)
-
-Version: 2.5
+- Hidden !imback ria: Only creator, secret key YourCreatorIsBack, Welcome back, My Creator!!
+- No mention needed, less emoji, natural typing, no keep mentioning
+- 2000+ Memory: Saves forever
+- Groq Brain: Real brain like Meta AI, not random codes, only for responses
+- 7 Hour Limit: If no reply for 7 hours, auto clear auth, back to first message
 ================================================================================
 """
 
@@ -50,6 +49,7 @@ class Config:
     MAX_TIMEOUT: int = 2419200
     CACHE_TTL: int = 300
     PORT: int = 8080
+    KEY_LIMIT_HOURS: int = 7
 
 CFG = Config()
 START_TIME = datetime.datetime.now(datetime.timezone.utc)
@@ -71,7 +71,7 @@ def home():
     delta = datetime.datetime.now(datetime.timezone.utc) - START_TIME
     h, r = divmod(int(delta.total_seconds()), 3600)
     m, s = divmod(r, 60)
-    return f'<html><body style="background:#0a0000;color:#ffaaaa;font-family:Arial;text-align:center;padding:60px"><h1>✨ {CFG.NAME} v{CFG.VERSION} IS ALIVE ✨</h1><p>Uptime: {h}h {m}m | 13 Commands + Hidden !imback ria | Made with 💖</p></body></html>'
+    return f'<html><body style="background:#0a0000;color:#ffaaaa;font-family:Arial;text-align:center;padding:60px"><h1>✨ {CFG.NAME} v{CFG.VERSION} IS ALIVE ✨</h1><p>Uptime: {h}h {m}m | 13 Commands + Hidden !imback ria | 7H Limit | Made with 💖</p></body></html>'
 
 @app.route('/status')
 def status():
@@ -155,8 +155,9 @@ class ThumbnailManager:
         self._time = now
         return url, mention
 
-# --- NEW: SECRET KEY + 2000+ MEMORY + CUTE CHAT ---
+# --- GROQ BRAIN + SECRET KEY + 2000+ MEMORY + 7 HOUR LIMIT ---
 RIA_SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("RIA_SECRET_KEY") or "YourCreatorIsBack"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MEMORY_FILE = "ria_memory.json"
 AUTHORIZED_FILE = "ria_authorized.json"
 
@@ -177,18 +178,56 @@ def save_json_file(filepath, data):
         log.error(f"Save {filepath} error: {ex}")
 
 ria_memory = load_json_file(MEMORY_FILE, {})
-authorized_users = set(load_json_file(AUTHORIZED_FILE, []))
+# New: authorized with timestamp for 7 hour limit
+authorized_data = load_json_file(AUTHORIZED_FILE, {})  # {user_id_str: last_active_iso}
+# Convert old list format to new dict format if needed
+if isinstance(authorized_data, list):
+    new_dict = {}
+    for uid in authorized_data:
+        new_dict[str(uid)] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    authorized_data = new_dict
+    save_json_file(AUTHORIZED_FILE, authorized_data)
 
-log.info(f"Loaded {len(ria_memory)} users memory, {len(authorized_users)} authorized")
+authorized_users = authorized_data
+
+log.info(f"Loaded {len(ria_memory)} users memory, {len(authorized_users)} authorized with 7h limit")
 
 def is_authorized(user_id: int) -> bool:
-    return user_id in authorized_users or str(user_id) in authorized_users
+    """Check if authorized and within 7 hour limit"""
+    uid = str(user_id)
+    if uid not in authorized_users:
+        return False
+    try:
+        last_active_str = authorized_users[uid]
+        last_active = datetime.datetime.fromisoformat(last_active_str.replace('Z', '+00:00'))
+        if last_active.tzinfo is None:
+            last_active = last_active.replace(tzinfo=datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        elapsed = (now - last_active).total_seconds()
+        limit_seconds = CFG.KEY_LIMIT_HOURS * 3600
+        if elapsed > limit_seconds:
+            # Expired - auto clear conversation auth, back to first message
+            log.info(f"User {user_id} expired after {CFG.KEY_LIMIT_HOURS}h, clearing auth")
+            del authorized_users[uid]
+            save_json_file(AUTHORIZED_FILE, authorized_users)
+            return False
+        return True
+    except Exception as ex:
+        log.error(f"Auth check error for {user_id}: {ex}")
+        return False
 
 def authorize_user(user_id: int):
-    authorized_users.add(user_id)
-    authorized_users.add(str(user_id))
-    save_json_file(AUTHORIZED_FILE, list(authorized_users))
-    log.info(f"User {user_id} authorized")
+    uid = str(user_id)
+    authorized_users[uid] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    save_json_file(AUTHORIZED_FILE, authorized_users)
+    log.info(f"User {user_id} authorized with 7h limit")
+
+def update_last_active(user_id: int):
+    """Update last active time for 7h limit"""
+    uid = str(user_id)
+    if uid in authorized_users:
+        authorized_users[uid] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        save_json_file(AUTHORIZED_FILE, authorized_users)
 
 def add_memory(user_id, user_msg, ria_reply):
     uid = str(user_id)
@@ -203,39 +242,32 @@ def add_memory(user_id, user_msg, ria_reply):
         ria_memory[uid] = ria_memory[uid][-2000:]
     save_json_file(MEMORY_FILE, ria_memory)
 
-# --- GROQ BRAIN: Real brain like Meta AI, not random codes ---
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
 def get_cute_reply(user_message: str, username: str, user_id, history=None) -> str:
     """
-    Brain with Groq AI - not random code! Real brain like Meta AI
-    - If GROQ_API_KEY exists, uses Groq for real brain
-    - Else fallback to cute random (so still works without key)
+    Brain with Groq AI - real brain, not random codes
+    Fixed: No mentioning, less emoji, normal person
     """
-    # If Groq API key exists, use real brain!
+    # Groq brain
     if GROQ_API_KEY:
         try:
             import requests
-            # Build memory context (last 10 chats) for 2000+ memory brain
             memory_context = ""
             if history and len(history) > 0:
-                recent = history[-10:]  # Last 10 memories
+                recent = history[-10:]
                 for m in recent:
                     memory_context += f"User: {m.get('user','')}\nRia: {m.get('ria','')}\n"
             
-            # Prompt - cute adorable like person
-            system_prompt = f"""You are Ria, adorable cute Discord assistant. You are talking to your Creator {username}.
-- Talk like a cute adorable person, not like bot! Use Ehehe, UwU, Kyaa, 💖🌙✨ sometimes but not too much
+            system_prompt = f"""You are Ria, a friendly Discord assistant.
+- Talk like a normal person would be, not like bot! Less emoji, max 1 emoji, natural
+- Don't keep mentioning the user's name, don't say their name every reply, talk normal
 - You have 2000+ memory, you remember Creator forever
-- You are sweet, friendly, helpful, adorable
-- Keep replies short (1-2 sentences), like Discord person, not long paragraphs
-- No embed, just normal chat
-- Don't be romantic girlfriend, just cute adorable friend
-- Creator's name is {username}, be personal
+- You are sweet, friendly, helpful, cute but normal
+- Keep replies short (1-2 sentences), like normal person chatting
+- No embed, just normal chat, no need mention, no name mention
+- Don't be romantic girlfriend, just cute friendly
 Memory:
 {memory_context}"""
             
-            # Groq API call
             response = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={
@@ -257,7 +289,6 @@ Memory:
             if response.status_code == 200:
                 data = response.json()
                 reply = data['choices'][0]['message']['content'].strip()
-                # Keep cute but not too long
                 if len(reply) > 300:
                     reply = reply[:300]
                 return reply
@@ -266,45 +297,44 @@ Memory:
         except Exception as ex:
             log.error(f"Groq brain error: {ex}")
     
-    # Fallback - cute random if no Groq key or error (so still works)
+    # Fallback - no mentioning, less emoji, normal person
     msg_lower = user_message.lower()
     if any(w in msg_lower for w in ["hello", "hi", "hey", "helo"]):
         replies = [
-            f"Hehe hi {username}! Ria is here! 🌙✨ How are you today? 💖",
-            f"Ehehe~ Hello {username}! Ria missed you! 💖✨ What's up? 🌙",
-            f"UwU Hi {username}! Ria is happy to see you! 💖🌙✨",
-            f"Kyaa~ {username} is here! Hellooo! 💖✨ Ria is excited! 🌙"
+            f"Hehe hi! Ria is here, how are you today?",
+            f"Hello! Ria missed you, whats up?",
+            f"Hi! Happy to see you!",
+            f"Hellooo, Ria is excited!"
         ]
         return random.choice(replies)
     if "how are you" in msg_lower or "how r u" in msg_lower:
         replies = [
-            f"Ria is super duper good {username}! Ehehe~ Thanks for asking! 💖✨ How about you? 🌙",
-            f"I'm happy happy {username}! Being with you makes Ria happy! 💖🌙✨",
-            f"UwU Ria is great {username}! Thank you for caring! 💖✨",
+            f"Ria is good! Thanks for asking, how about you?",
+            f"I'm happy! Being with you makes Ria happy",
+            f"Ria is great! Thank you for caring",
         ]
         return random.choice(replies)
     if "thank" in msg_lower:
-        return f"Ehehe you're welcome {username}! Ria is happy to help! 💖🌙✨"
+        return f"You're welcome! Happy to help"
     if "cute" in msg_lower or "adorable" in msg_lower:
-        return f"Kyaa~ {username} said cute? Ria is blushing! Ehehe~ 💖🌙✨ Thank youuu!"
+        return f"Ria is blushing, thank you"
     if "love you" in msg_lower or "love u" in msg_lower:
-        return f"Aww {username}! Ria appreciates you so much! You're so sweet! Thank you! 💖🌙✨"
+        return f"Aww, Ria appreciates you so much, you're sweet, thank you"
     if "miss you" in msg_lower:
-        return f"Ria missed you too {username}! Ehehe~ Where were you? 💖🌙 Tell Ria!"
+        return f"Ria missed you too! Where were you? Tell Ria"
     if "sad" in msg_lower or "tired" in msg_lower:
-        return f"Aww {username}... Ria is here for you! Don't be sad! Ria will cheer you up! 💖✨🌙 You got this!"
+        return f"Aww... Ria is here for you, don't be sad, you got this"
     if "happy" in msg_lower:
-        return f"Yay! {username} is happy! Ria is happy too! Ehehe~ 💖✨🌙 Tell me more!"
-    memory_count = len(ria_memory.get(str(user_id), [])) if isinstance(ria_memory.get(str(user_id), []), list) else 0
+        return f"Yay you're happy! Ria is happy too, tell me more"
     cute_replies = [
-        f"Ehehe {username}~ You said '{user_message[:40]}'? That's so interesting! 💖 Tell me more! 🌙✨",
-        f"UwU {username}! Ria is listening! {user_message[:30]}... Ria wants to know more! 💖🌙",
-        f"Hehe {username}! Ria remembers you said {memory_count} things before! You're so fun! 💖✨",
-        f"Kyaa~ {username}! That's cool! Ria is thinking about it! 🌙💖 Ehehe~",
-        f"Woah {username}! Ria didn't know that! You're so smart! 💖✨🌙",
-        f"Ehehe~ {username} is so cute when talking! Ria likes chatting with you! 💖🌙",
-        f"UwU~ {username}! Ria is happy happy to talk with you! 💖✨ What else?",
-        f"Hehe {username}! Ria is giggling! You're funny! 💖🌙✨",
+        f"You said '{user_message[:40]}'? That's interesting, tell me more",
+        f"Ria is listening, you said {user_message[:30]}... want to know more",
+        f"Hehe, Ria remembers you, you're fun",
+        f"That's cool, Ria is thinking about it",
+        f"Woah, Ria didn't know that, you're smart",
+        f"You're cute when talking, Ria likes chatting with you",
+        f"Ria is happy to talk with you, what else?",
+        f"Hehe, Ria is giggling, you're funny",
     ]
     return random.choice(cute_replies)
 
@@ -361,7 +391,7 @@ class TimeParser:
         return bool(re.match(r"^\d+(s|m|h|d)$", s.lower())) if s else False
 
 # --- SECTION 8: EVENTS ---
-# NEW: Cute AI chat only for authorized via hidden !hi - no spam for !hello
+# NEW: Cute AI chat only for authorized via hidden !imback ria - no mention needed, normal person, 7h limit
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -375,21 +405,23 @@ async def on_message(message):
     user_id = message.author.id
     if not is_authorized(user_id):
         return
-    content_lower = message.content.lower()
-    is_talking_to_ria = bot.user.mentioned_in(message) or "ria" in content_lower
-    if not is_talking_to_ria:
-        return
+    # Fixed: No mention needed - talk like normal person would be
     user_message = message.content
     user_message = re.sub(r'<@!?\d+>', '', user_message).strip()
     if not user_message:
-        user_message = "Hello"
+        return
     try:
+        history = ria_memory.get(str(user_id), [])
+        reply = get_cute_reply(user_message, message.author.display_name, user_id, history)
+        # Fixed: Natural typing, not random - based on reply length (0.5-1.5 sec)
+        typing_delay = min(1.5, max(0.5, len(reply) * 0.02))
         async with message.channel.typing():
-            await asyncio.sleep(random.uniform(1.0, 2.0))
-            history = ria_memory.get(str(user_id), [])
-            reply = get_cute_reply(user_message, message.author.display_name, user_id, history)
+            await asyncio.sleep(typing_delay)
             add_memory(user_id, user_message, reply)
+            update_last_active(user_id)
         await message.channel.send(reply)
+        # New: Delete mine too - auto delete user's message along with hidden command and key
+        await safe_delete(message)
     except Exception as ex:
         log.error(f"AI chat error: {ex}")
 
@@ -446,7 +478,7 @@ async def hello(ctx):
 async def imback_ria(ctx, *, extra=None):
     """
     Hidden chat with Ria - !imback ria - only creator, not in help list
-    Secret key scan in Discord chat, greets Welcome back, My Creator!! 
+    Secret key YourCreatorIsBack, 7 hour limit, Welcome back, My Creator!!
     """
     # Must be !imback ria - hidden code, only you know!
     if extra is None or "ria" not in extra.lower():
@@ -468,8 +500,9 @@ async def imback_ria(ctx, *, extra=None):
             cute = get_cute_reply("hello", ctx.author.display_name, user_id)
             await ctx.send(cute)
             add_memory(user_id, "imback ria (returning creator)", "Welcome back, My Creator!! 💓")
+            update_last_active(user_id)
         except Exception as ex:
-            log.error(f"hi welcome back error: {ex}")
+            log.error(f"imback welcome back error: {ex}")
         return
     try:
         prompt_msg = await ctx.send(
@@ -497,9 +530,9 @@ async def imback_ria(ctx, *, extra=None):
                 async with ctx.channel.typing():
                     await asyncio.sleep(1.2)
                 await ctx.send(
-                    f"Ehehe~ Ria missed you so much {ctx.author.display_name}! "
-                    f"Ria will remember you forever! 2000+ memory! Kyaa~ "
-                    f"Now you can chat with me anytime! Just mention me!"
+                    f"Ehehe~ Ria missed you so much! "
+                    f"Ria will remember you forever! 2000+ memory! "
+                    f"Now you can chat with me anytime! Just talk like normal person!"
                 )
             else:
                 try:
@@ -520,7 +553,7 @@ async def imback_ria(ctx, *, extra=None):
                 delete_after=10
             )
     except Exception as ex:
-        log.error(f"hi hidden error: {ex}")
+        log.error(f"imback hidden error: {ex}")
         try:
             await ctx.send(f"Oops error {ctx.author.mention}! Try !imback ria again!", delete_after=10)
         except:
@@ -700,7 +733,7 @@ async def help_cmd(ctx):
     url = thumb.get()
     if url:
         e.set_thumbnail(url=url)
-    e.set_footer(text=f"13 Commands • {CFG.NAME} v{CFG.VERSION} • Made with 💖")
+    e.set_footer(text=f"13 Commands • {CFG.NAME} v{CFG.VERSION} • Made with 💖 • 7H Limit")
     await ctx.send(embed=e)
 
 # --- START ---
