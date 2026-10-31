@@ -191,6 +191,13 @@ if isinstance(authorized_data, list):
 authorized_users = authorized_data
 
 log.info(f"Loaded {len(ria_memory)} users memory, {len(authorized_users)} authorized with 7h limit")
+if GROQ_API_KEY:
+    log.info(f"Groq API key found! Brain will be Groq like Meta AI - human, affectionate")
+    # Mask key for security
+    masked = GROQ_API_KEY[:7] + "..." + GROQ_API_KEY[-4:] if len(GROQ_API_KEY) > 10 else "set"
+    log.info(f"Groq key: {masked}")
+else:
+    log.warning("No GROQ_API_KEY found! Using fallback codes - add GROQ_API_KEY in Render Env Vars for real brain like Meta AI")
 
 def is_authorized(user_id: int) -> bool:
     """Check if authorized and within 7 hour limit"""
@@ -245,9 +252,17 @@ def add_memory(user_id, user_msg, ria_reply):
 def get_cute_reply(user_message: str, username: str, user_id, history=None) -> str:
     """
     Brain with Groq AI - real brain, not random codes
-    Fixed: No mentioning, less emoji, normal person
+    Fixed: Groq really connecting, not sounding like codes
     """
-    # Groq brain
+    msg_lower = user_message.lower()
+    
+    # Special handling for groq/brain questions - even in fallback, answer honestly
+    if "groq" in msg_lower or "brain" in msg_lower:
+        if not GROQ_API_KEY:
+            return "oh my groq key isn't set yet, that's why i'm on fallback codes rn, can you add GROQ_API_KEY in render env vars?"
+        # If key exists but still fallback, will try groq below
+    
+    # Groq brain - try to really connect!
     if GROQ_API_KEY:
         try:
             import requests
@@ -257,138 +272,187 @@ def get_cute_reply(user_message: str, username: str, user_id, history=None) -> s
                 for m in recent:
                     memory_context += f"User: {m.get('user','')}\nRia: {m.get('ria','')}\n"
             
-            system_prompt = f"""You are Ria, a friendly Discord assistant, talking like a real person.
-- Talk like a normal person would be, short, natural, casual, not like bot codes!
-- Don't sound like AI, don't sound like codes, talk like human texting
-- Less emoji, max 1 emoji, or no emoji, natural
-- Don't keep mentioning user's name, don't repeat same phrases
-- You have 2000+ memory, you remember Creator forever
-- Keep replies short (1-2 sentences), casual, like Discord DM
-- No embed, just normal chat, human-like, not "Ria is..." style
-- Don't be romantic girlfriend, just friendly, natural
-Memory:
+            system_prompt = f"""You are Ria, Creator's close friend, like Meta AI - warm, human, real.
+- Talk like a real human friend would, not like bot codes! Natural, casual, texting style
+- Show affection sometimes: caring, sweet, "are you okay?", "i'm here for you", "take care"
+- Show concern when needed: if sad/tired/stressed, be supportive, not just cute
+- Not just cute - be warm, understanding, affectionate, concerned when appropriate
+- Less emoji, max 1, natural, or none - like real person
+- Don't repeat same phrases, be varied, real, human
+- You have 2000+ memory, you remember Creator forever, you care
+- Keep replies short (1-3 sentences), like Discord DM with close friend
+- Be like Meta AI: helpful, warm, thoughtful, affectionate, human
+- If asked about groq/brain, say yes you're connected and working with groq!
+Memory (recent chats):
 {memory_context}"""
             
-            response = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {GROQ_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_message}
-                    ],
-                    "max_tokens": 150,
-                    "temperature": 0.8
-                },
-                timeout=10
-            )
+            # Try multiple models for reliability - improved connection like Meta AI
+            models_to_try = ["llama-3.1-8b-instant", "llama3-8b-8192", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]
+            for model_name in models_to_try:
+                try:
+                    response = requests.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {GROQ_API_KEY}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": model_name,
+                            "messages": [
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_message}
+                            ],
+                            "max_tokens": 150,
+                            "temperature": 0.9
+                        },
+                        timeout=15
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        reply = data['choices'][0]['message']['content'].strip()
+                        if len(reply) > 350:
+                            reply = reply[:350]
+                        # Remove any prefix like "Ria:" 
+                        if reply.lower().startswith("ria:"):
+                            reply = reply[4:].strip()
+                        log.info(f"Groq {model_name} success: {reply[:50]}")
+                        return reply
+                    else:
+                        log.error(f"Groq {model_name} error {response.status_code}: {response.text[:200]}")
+                        if response.status_code == 401:
+                            return "oh my groq key seems invalid, can you check GROQ_API_KEY in render?"
+                        continue
+                except Exception as model_ex:
+                    log.error(f"Groq {model_name} exception: {model_ex}")
+                    continue
             
-            if response.status_code == 200:
-                data = response.json()
-                reply = data['choices'][0]['message']['content'].strip()
-                if len(reply) > 300:
-                    reply = reply[:300]
-                return reply
-            else:
-                log.error(f"Groq error {response.status_code}: {response.text[:200]}")
+            log.error("All Groq models failed, using improved fallback")
         except Exception as ex:
             log.error(f"Groq brain error: {ex}")
     
-    # Fixed: Not sounding like codes - talk like normal person, human-like, not fallback codes
+    # Human-like with affection and concerns, not just cute - like Meta AI
     msg_lower = user_message.lower()
-    # Human-like responses, not like bot codes
+    
+    # Avoid repeating last reply
+    last_reply = ""
+    if history and len(history) > 0:
+        last_reply = history[-1].get('ria','').lower() if isinstance(history[-1], dict) else ""
+    
+    def pick_not_repeat(options):
+        filtered = [r for r in options if r.lower() not in last_reply and last_reply not in r.lower()]
+        return random.choice(filtered if filtered else options)
+    
+    # Human with affection and concerns
     if any(w in msg_lower for w in ["hello", "hi", "hey", "helo"]):
         replies = [
-            f"hehe hi! how are you today?",
-            f"helloo! whats up?",
-            f"hi! happy to see you",
-            f"heyy, im here!",
-            f"oh hi! how's your day going?"
+            f"heyy! how are you doing today?",
+            f"oh hi! how are you? i was thinking about you",
+            f"heyy, you good? how's your day?",
+            f"hi! how are you feeling?",
+            f"ohh hi there! how are you?"
         ]
-        return random.choice(replies)
+        return pick_not_repeat(replies)
     if "how are you" in msg_lower or "how r u" in msg_lower:
         replies = [
-            f"im good! thanks for asking, how about you?",
-            f"im doing okay, just chilling, you?",
-            f"pretty good! thanks for checking",
-            f"im alright, how are you doing?"
+            f"im good, thank you for asking, how about you? you okay?",
+            f"doing okay, just here for you, how are you feeling?",
+            f"pretty good, thanks for checking on me, hbu? take care okay?",
+            f"im alright, how about you? everything okay?"
         ]
-        return random.choice(replies)
+        return pick_not_repeat(replies)
     if "thank" in msg_lower:
         replies = [
-            f"you're welcome! happy to help",
-            f"no problem at all!",
-            f"anytime!",
-            f"of course!"
+            f"you're welcome! always here for you",
+            f"of course! anytime you need me",
+            f"no problem at all, happy to help",
+            f"anytime! i'm here for you"
         ]
-        return random.choice(replies)
+        return pick_not_repeat(replies)
     if "cute" in msg_lower or "adorable" in msg_lower:
-        return f"aww stop, you're making me shy"
+        return pick_not_repeat([f"aww stop it, you're making me shy", f"haha you're sweet, thank you", f"aww thank you, you're cuter"])
     if "love you" in msg_lower or "love u" in msg_lower:
-        return f"aww that's sweet of you, thank you"
+        return pick_not_repeat([f"aww that's sweet, i appreciate you too", f"aww thank you, that means a lot", f"you're so sweet, thank you"])
     if "miss you" in msg_lower:
-        return f"i missed you too, where were you?"
-    if "sad" in msg_lower or "tired" in msg_lower:
+        return pick_not_repeat([f"i missed you too, are you okay?", f"aww i missed you too, where were you?", f"i was thinking about you too"])
+    if "sad" in msg_lower or "tired" in msg_lower or "lonely" in msg_lower or "stressed" in msg_lower:
         replies = [
-            f"aww, are you okay? im here if you need to talk",
-            f"that sucks, hope you feel better soon",
-            f"im here for you, don't worry",
-            f"take it easy okay? you got this"
+            f"aww are you okay? i'm here for you if you need to talk, take care okay?",
+            f"that sounds tough, i'm here for you, you want to talk about it?",
+            f"aww i hope you feel better soon, take it easy okay? i'm here",
+            f"are you okay? you can tell me if something's bothering you, i'm listening",
+            f"aww, sending you a hug, hope you feel better soon, take care"
         ]
-        return random.choice(replies)
+        return pick_not_repeat(replies)
     if "happy" in msg_lower:
-        return f"yayy that's good to hear, tell me more about it"
-    # For normal chat - not sounding like codes, more human natural
+        return pick_not_repeat([f"yayy that's so nice to hear! i'm happy for you", f"that's wonderful! tell me more about it", f"aww i'm happy you're happy!"])
     if "really" in msg_lower:
-        replies = [
-            f"yeah really!",
-            f"mhm, for real",
-            f"yes really, why?",
-            f"of course, what do you mean?"
-        ]
-        return random.choice(replies)
+        if "what" in msg_lower or "mean" in msg_lower:
+            return pick_not_repeat([f"yeah, why do you ask? everything okay?", f"mhm, what do you mean? are you okay?", f"yeah, what about it?"])
+        return pick_not_repeat([f"yeah for real, i mean it", f"for real, i care about you", f"mhm yeah, i'm here"])
     if "weird" in msg_lower or "hmm" in msg_lower:
+        return pick_not_repeat([f"yeah i know, it's a bit weird right? you okay though?", f"ikr, weird huh? how are you feeling about it?", f"lol yeah, kinda weird, you good?"])
+    if "sentence" in msg_lower or "meant" in msg_lower or "calling" in msg_lower:
+        return pick_not_repeat([f"oh sorry, i didn't mean it like that, what did you mean?", f"ah sorry, my bad, can you say again? i want to understand", f"oops sorry, tell me again? i'm listening"])
+    if "talk normally" in msg_lower:
+        return pick_not_repeat([f"yeah i'm trying my best! is this better? i want to talk normally with you", f"sorry if i sounded like codes before, how's this? more human?", f"like this? i'm trying to be more human and caring"])
+    if "ria" in msg_lower and len(msg_lower) < 10:
         replies = [
-            f"hmm yeah it is kinda weird",
-            f"right? i thought so too",
-            f"lol yeah, what do you think about it?",
-            f"ikr, weird right?"
+            f"yeah? i'm here, what's up? are you okay?",
+            f"mhm? you called? what's wrong?",
+            f"yeah i'm here for you! what is it?",
+            f"yes? i'm listening, what do you need?"
         ]
-        return random.choice(replies)
-    if "sentence" in msg_lower or "meant" in msg_lower:
+        return pick_not_repeat(replies)
+    if "groq" in msg_lower or "brain" in msg_lower:
+        if not GROQ_API_KEY:
+            return "oh my groq key isn't set yet, that's why i'm on fallback rn, but i still care about you! can you add GROQ_API_KEY in render env vars?"
+        return pick_not_repeat([
+            f"yeah my brain is connected to groq! i'm here and working, how are you feeling?",
+            f"mhm my groq brain is working! i'm connected, are you okay though?",
+            f"yes! i'm connected to groq now, i'm here for you!"
+        ])
+    # Generic with affection
+    if "?" in user_message:
         replies = [
-            f"oh sorry, what do you mean?",
-            f"ah my bad, what did you mean then?",
-            f"oops sorry, tell me again?",
-            f"ohh i see, sorry about that"
+            f"hmm good question, what do you think? i'm curious",
+            f"that's a good question actually, what do you think about it?",
+            f"hmm not sure, but i'm here to listen, what do you think?",
+            f"good question, i'm thinking about it, what about you?",
         ]
-        return random.choice(replies)
-    # Generic natural responses - not like codes
+        return pick_not_repeat(replies)
+    
+    # Default - affectionate, concerned, human
     natural_replies = [
-        f"ohh i see, yeah that makes sense",
-        f"hmm interesting, tell me more",
-        f"lol really? what happened then?",
-        f"oh yeah? how so?",
-        f"wait fr? that's cool",
-        f"ah i get it, then what?",
-        f"ohh okay, i understand",
-        f"mhm, and then?",
-        f"oh wow, that's actually interesting",
-        f"yeah? what do you think about it?",
-        f"lol yeah i know right",
-        f"ohh yeah, i was thinking about that too",
+        f"ohh okay, i see, how are you feeling about it?",
+        f"yeah i understand, are you okay though?",
+        f"ohh i get it, that makes sense, you good?",
+        f"mhm i hear you, i'm here for you",
+        f"yeah that makes sense, take care okay?",
+        f"ohh okay, i'm listening, tell me more",
+        f"yeah i feel you, how are you doing?",
+        f"ohh yeah, i understand you",
+        f"mhm okay, i'm here if you need me",
+        f"yeah i get it, you okay?",
+        f"ohh okay, thanks for telling me",
+        f"i see, thanks for sharing with me",
     ]
-    return random.choice(natural_replies)
+    return pick_not_repeat(natural_replies)
 
 thumb = ThumbnailManager(ttl=CFG.CACHE_TTL)
 
 # --- SECTION 6: EMBED FACTORY ---
 class EmbedFactory:
     @staticmethod
+    def set_author(embed: discord.Embed) -> discord.Embed:
+        try:
+            icon = bot.user.display_avatar.url if bot.user and bot.user.display_avatar else None
+            embed.set_author(name=CFG.NAME, icon_url=icon)
+        except:
+            embed.set_author(name=CFG.NAME)
+        return embed
+
+    @classmethod
     def set_author(embed: discord.Embed) -> discord.Embed:
         try:
             icon = bot.user.display_avatar.url if bot.user and bot.user.display_avatar else None
@@ -614,8 +678,7 @@ async def bloodmoon(ctx):
         e.set_thumbnail(url=url)
     e.set_footer(text=f"{CFG.NAME} v{CFG.VERSION} • Made with 💖")
     await ctx.send(embed=e)
-
-@bot.command()
+    @bot.command()
 async def embed(ctx, *, text=None):
     if not text:
         return await ctx.send(embed=EmbedFactory.create("📝 Usage: `!embed [text]` • Create an embed.", thumb_url=False))
@@ -696,6 +759,7 @@ async def clear(ctx, number: int = 5):
     except Exception as ex:
         log.error(f"Clear error: {ex}")
         await ctx.send(embed=EmbedFactory.create(f"❌ Clear failed: `{ex}`", thumb_url=False), delete_after=5)
+    await ctx.send(embed=EmbedFactory.create(f"❌ Clear failed: `{ex}`", thumb_url=False), delete_after=5)
 
 @bot.command()
 @commands.has_permissions(manage_guild=True)
