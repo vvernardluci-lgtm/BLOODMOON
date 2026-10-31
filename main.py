@@ -514,7 +514,8 @@ async def imback_ria(ctx, *, extra=None):
             try:
                 await safe_delete(prompt_msg)
             except:
-                passawait ctx.send(
+                pass
+            await ctx.send(
                 f"{ctx.author.mention} Time's up! Secret key scan timed out! Try !imback ria again!",
                 delete_after=10
             )
